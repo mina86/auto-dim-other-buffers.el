@@ -7,6 +7,11 @@
 (make-face 'sd/dimmed-font)
 (set-face-attribute 'sd/dimmed-font nil :background "black")
 
+(defcustom auto-dim-other-buffers-face 'sd/dimmed-font
+  "Face (presumably dimmed somehow) for non-current buffers."
+  :type 'face
+  :group 'auto-dim-other-buffers)
+
 (defun turn-off-auto-dim-other-buffers ()
   (interactive)
   (remove-hook 'post-command-hook 'sd/auto-dim-other-buffers)
@@ -26,7 +31,7 @@
     (dolist (buffer (buffer-list))
       (set-buffer buffer)
       (unless (minibufferp)
-        (buffer-face-set 'sd/dimmed-font)))
+        (buffer-face-set auto-dim-other-buffers-face)))
     (set-buffer original)
     (buffer-face-set nil)))
 

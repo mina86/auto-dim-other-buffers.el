@@ -8,9 +8,5 @@ Use [MELPA](http://melpa.milkbox.net/): `M-x package-install RET auto-dim-other-
 
 ## Usage
 
-* `turn-on-auto-dim-other-buffers`
-* `turn-off-auto-dim-other-buffers`
-
-## TODO:
-
-* Make the face more easily customizable
+* `M-x turn-on-auto-dim-other-buffers`
+* Customize `auto-dim-other-buffers-face`
