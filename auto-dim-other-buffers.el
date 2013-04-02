@@ -19,8 +19,7 @@
     (dolist (buffer (buffer-list))
       (set-buffer buffer)
       (buffer-face-set nil))
-    (set-buffer original)
-    (buffer-face-set nil)))
+    (set-buffer original)))
 
 (defun turn-on-auto-dim-other-buffers ()
   (interactive)
