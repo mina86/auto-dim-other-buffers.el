@@ -2,7 +2,7 @@
 
 ;; Author: Steven Degutis
 ;; URL: https://github.com/sdegutis/auto-dim-other-buffers.el
-;; Version: 1.0
+;; Version: 1.2
 
 (make-face 'sd/dimmed-font)
 (set-face-attribute 'sd/dimmed-font nil :background "black")
