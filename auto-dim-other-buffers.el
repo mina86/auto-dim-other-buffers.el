@@ -19,6 +19,7 @@
   (let ((original (current-buffer)))
     (unless (eq original adob/last-buffer) ;; if we haven't switched buffers, do nothing
       (when (and adob/last-buffer
+                 (buffer-live-p adob/last-buffer)
                  (not (minibufferp adob/last-buffer)))
         (set-buffer adob/last-buffer)
         (buffer-face-set auto-dim-other-buffers-face))
