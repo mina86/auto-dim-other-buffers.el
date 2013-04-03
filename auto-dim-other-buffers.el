@@ -4,12 +4,8 @@
 ;; URL: https://github.com/sdegutis/auto-dim-other-buffers.el
 ;; Version: 1.2
 
-(make-face 'sd/dimmed-font)
-(set-face-attribute 'sd/dimmed-font nil :background "black")
-
-(defcustom auto-dim-other-buffers-face 'sd/dimmed-font
+(defface auto-dim-other-buffers-face '((t :background "black"))
   "Face (presumably dimmed somehow) for non-current buffers."
-  :type 'face
   :group 'auto-dim-other-buffers)
 
 (defun adob/pre-command-hook ()
@@ -30,7 +26,7 @@
                  )
 
         (set-buffer adob/last-buffer)
-        (buffer-face-set auto-dim-other-buffers-face))
+        (buffer-face-set 'auto-dim-other-buffers-face))
 
       ;; now, restore the current buffer, and undim it.
       (set-buffer original)
@@ -47,7 +43,7 @@
   (adob/set-face-on-all-buffers nil))
 
 (defun adob/dim-all-windows ()
-  (adob/set-face-on-all-buffers auto-dim-other-buffers-face))
+  (adob/set-face-on-all-buffers 'auto-dim-other-buffers-face))
 
 (defun turn-off-auto-dim-other-buffers ()
   (interactive)
