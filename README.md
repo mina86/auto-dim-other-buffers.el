@@ -6,11 +6,11 @@ Visually makes non-current buffers less prominent.
 
 ## Install via [MELPA](http://melpa.milkbox.net/)
 
-`M-x package-install auto-dim-other-buffers`
+`M-x` `package-install` `auto-dim-other-buffers`
 
 ## Turn it on
 
-`M-x turn-on-auto-dim-other-buffers`
+`M-x` `turn-on-auto-dim-other-buffers`
 
 ## Customize "dimmed" buffers face
 
