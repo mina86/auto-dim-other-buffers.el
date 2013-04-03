@@ -2,7 +2,7 @@
 
 ;; Author: Steven Degutis
 ;; URL: https://github.com/sdegutis/auto-dim-other-buffers.el
-;; Version: 1.2
+;; Version: 1.3
 
 (defface auto-dim-other-buffers-face '((t :background "black"))
   "Face (presumably dimmed somehow) for non-current buffers."
@@ -32,6 +32,12 @@
       (set-buffer original)
       (buffer-face-set nil))))
 
+;; if a new window pops up, like a help window or something, we
+;; should dim or undim it, depending on if its selected.
+(defun adob/after-change-major-mode-hook ()
+  (buffer-face-set (unless (eq (current-buffer) (window-buffer))
+                     'auto-dim-other-buffers-face)))
+
 (defun adob/set-face-on-all-buffers (face)
   (let ((original (current-buffer)))
     (dolist (buffer (buffer-list))
@@ -48,13 +54,15 @@
 (defun turn-off-auto-dim-other-buffers ()
   (remove-hook 'pre-command-hook 'adob/pre-command-hook)
   (remove-hook 'post-command-hook 'adob/post-command-hook)
+  (remove-hook 'after-change-major-mode-hook 'adob/after-change-major-mode-hook)
   (adob/undim-all-windows))
 
 (defun turn-on-auto-dim-other-buffers ()
   (setq adob/last-buffer nil)
   (adob/dim-all-windows)
   (add-hook 'pre-command-hook 'adob/pre-command-hook)
-  (add-hook 'post-command-hook 'adob/post-command-hook))
+  (add-hook 'post-command-hook 'adob/post-command-hook)
+  (add-hook 'after-change-major-mode-hook 'adob/after-change-major-mode-hook))
 
 (define-minor-mode auto-dim-other-buffers-mode
   "Visually makes non-current buffers less prominent"
