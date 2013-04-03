@@ -10,7 +10,7 @@ Visually makes non-current buffers less prominent.
 
 ## Turn it on
 
-`M-x` `auto-dim-other-buffers-mode`
+`M-x` `auto-dim-other-buffers-mode` (it's a global mode)
 
 ## Customize "dimmed" buffers face
 
