@@ -6,7 +6,7 @@
 
 (defface auto-dim-other-buffers-face '((t :background "black"))
   "Face (presumably dimmed somehow) for non-current buffers."
-  :group 'auto-dim-other-buffers)
+  :group 'auto-dim-other-buffers-mode)
 
 (defun adob/pre-command-hook ()
   (setq adob/last-buffer (current-buffer)))
@@ -46,17 +46,24 @@
   (adob/set-face-on-all-buffers 'auto-dim-other-buffers-face))
 
 (defun turn-off-auto-dim-other-buffers ()
-  (interactive)
+  (message "turning off")
   (remove-hook 'pre-command-hook 'adob/pre-command-hook)
   (remove-hook 'post-command-hook 'adob/post-command-hook)
   (adob/undim-all-windows))
 
 (defun turn-on-auto-dim-other-buffers ()
-  (interactive)
+  (message "turning on")
   (setq adob/last-buffer nil)
   (adob/dim-all-windows)
   (add-hook 'pre-command-hook 'adob/pre-command-hook)
   (add-hook 'post-command-hook 'adob/post-command-hook))
+
+(define-minor-mode auto-dim-other-buffers-mode
+  "Visually makes non-current buffers less prominent"
+  :lighter " auto-dim"
+  (if auto-dim-other-buffers-mode
+      (turn-on-auto-dim-other-buffers)
+    (turn-off-auto-dim-other-buffers)))
 
 (provide 'auto-dim-other-buffers)
 
