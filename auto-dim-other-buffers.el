@@ -12,27 +12,40 @@
   :type 'face
   :group 'auto-dim-other-buffers)
 
-(defun turn-off-auto-dim-other-buffers ()
+(setq adob/last-buffer nil)
+
+(defun adob/pre-command-hook ()
+  (setq adob/last-buffer (current-buffer)))
+
+(defun adob/post-command-hook ()
+  (let ((original (current-buffer)))
+    (unless (eq original adob/last-buffer)
+      (dolist (buffer (buffer-list))
+        (set-buffer buffer)
+        (unless (minibufferp)
+          (buffer-face-set auto-dim-other-buffers-face)))
+      (set-buffer original)
+      (buffer-face-set nil))))
+
+(defun adob/clear-all-windows ()
   (interactive)
-  (remove-hook 'post-command-hook 'sd/auto-dim-other-buffers)
   (let ((original (current-buffer)))
     (dolist (buffer (buffer-list))
       (set-buffer buffer)
       (buffer-face-set nil))
     (set-buffer original)))
 
+(defun turn-off-auto-dim-other-buffers ()
+  (interactive)
+  (remove-hook 'pre-command-hook 'adob/pre-command-hook)
+  (remove-hook 'post-command-hook 'adob/post-command-hook)
+  (adob/clear-all-windows))
+
 (defun turn-on-auto-dim-other-buffers ()
   (interactive)
-  (add-hook 'post-command-hook 'sd/auto-dim-other-buffers))
-
-(defun sd/auto-dim-other-buffers ()
-  (let ((original (current-buffer)))
-    (dolist (buffer (buffer-list))
-      (set-buffer buffer)
-      (unless (minibufferp)
-        (buffer-face-set auto-dim-other-buffers-face)))
-    (set-buffer original)
-    (buffer-face-set nil)))
+  (setq adob/last-buffer nil)
+  (add-hook 'pre-command-hook 'adob/pre-command-hook)
+  (add-hook 'post-command-hook 'adob/post-command-hook))
 
 (provide 'auto-dim-other-buffers)
 
