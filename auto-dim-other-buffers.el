@@ -46,13 +46,11 @@
   (adob/set-face-on-all-buffers 'auto-dim-other-buffers-face))
 
 (defun turn-off-auto-dim-other-buffers ()
-  (message "turning off")
   (remove-hook 'pre-command-hook 'adob/pre-command-hook)
   (remove-hook 'post-command-hook 'adob/post-command-hook)
   (adob/undim-all-windows))
 
 (defun turn-on-auto-dim-other-buffers ()
-  (message "turning on")
   (setq adob/last-buffer nil)
   (adob/dim-all-windows)
   (add-hook 'pre-command-hook 'adob/pre-command-hook)
