@@ -17,12 +17,22 @@
 
 (defun adob/post-command-hook ()
   (let ((original (current-buffer)))
-    (unless (eq original adob/last-buffer) ;; if we haven't switched buffers, do nothing
+
+    ;; if we haven't switched buffers, do nothing
+    (unless (eq original adob/last-buffer)
+
+      ;; first, try to dim the last buffer.  if it's nil, then the
+      ;; feature was just turned on and all buffers are already
+      ;; dimmed. if it's just killed, don't try to set its face.
       (when (and adob/last-buffer
                  (buffer-live-p adob/last-buffer)
-                 (not (minibufferp adob/last-buffer)))
+                 ;; (not (minibufferp adob/last-buffer)) ;; this doesn't do what i want
+                 )
+
         (set-buffer adob/last-buffer)
         (buffer-face-set auto-dim-other-buffers-face))
+
+      ;; now, restore the current buffer, and undim it.
       (set-buffer original)
       (buffer-face-set nil))))
 
