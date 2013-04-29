@@ -8,6 +8,9 @@
   "Face (presumably dimmed somehow) for non-current buffers."
   :group 'auto-dim-other-buffers)
 
+(defvar adob/last-buffer nil
+  "Buffer we were before command finished.")
+
 (defun adob/ignore-buffer (buffer)
   (or (null buffer)
       (minibufferp buffer)
