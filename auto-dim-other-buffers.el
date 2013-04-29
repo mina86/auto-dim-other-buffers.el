@@ -8,6 +8,11 @@
   "Face (presumably dimmed somehow) for non-current buffers."
   :group 'auto-dim-other-buffers)
 
+(defun adob/ignore-buffer (buffer)
+  (or (null buffer)
+      (minibufferp buffer)
+      (string-match "^ \\*Echo Area" (buffer-name buffer))))
+
 (defun adob/pre-command-hook ()
   (setq adob/last-buffer (current-buffer)))
 
@@ -19,7 +24,7 @@
     ;; feature was just turned on and all buffers are already
     ;; dimmed. if it's just killed, don't try to set its face.
     (and (buffer-live-p adob/last-buffer)
-         (not (minibufferp adob/last-buffer))
+         (not (adob/ignore-buffer adob/last-buffer))
          (with-current-buffer adob/last-buffer
            (buffer-face-set 'auto-dim-other-buffers-face)))
 
@@ -35,8 +40,9 @@
 (defun adob/set-face-on-all-buffers (face)
   (save-current-buffer
     (dolist (buffer (buffer-list))
-      (set-buffer buffer)
-      (buffer-face-set face))))
+      (unless (adob/ignore-buffer buffer)
+        (set-buffer buffer)
+        (buffer-face-set face)))))
 
 (defun adob/undim-all-windows ()
   (adob/set-face-on-all-buffers nil))
