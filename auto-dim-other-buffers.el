@@ -66,6 +66,7 @@
   (add-hook 'post-command-hook 'adob/post-command-hook)
   (add-hook 'after-change-major-mode-hook 'adob/after-change-major-mode-hook))
 
+;;;###autoload
 (define-minor-mode auto-dim-other-buffers-mode
   "Visually makes non-current buffers less prominent"
   :lighter " Auto-Dim"
