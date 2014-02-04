@@ -56,6 +56,8 @@
 (defun turn-off-auto-dim-other-buffers ()
   (remove-hook 'pre-command-hook 'adob/pre-command-hook)
   (remove-hook 'post-command-hook 'adob/post-command-hook)
+  (remove-hook 'focus-out-hook 'adob/dim-all-windows)
+  (remove-hook 'focus-in-hook 'adob/after-change-major-mode-hook)
   (remove-hook 'after-change-major-mode-hook 'adob/after-change-major-mode-hook)
   (remove-hook 'next-error-hook 'adob/after-change-major-mode-hook)
   (adob/undim-all-windows))
@@ -65,6 +67,8 @@
   (adob/dim-all-windows)
   (add-hook 'pre-command-hook 'adob/pre-command-hook)
   (add-hook 'post-command-hook 'adob/post-command-hook)
+  (add-hook 'focus-out-hook 'adob/dim-all-windows)
+  (add-hook 'focus-in-hook 'adob/after-change-major-mode-hook)
   (add-hook 'after-change-major-mode-hook 'adob/after-change-major-mode-hook)
   (add-hook 'next-error-hook 'adob/after-change-major-mode-hook))
 
