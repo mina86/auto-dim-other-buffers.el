@@ -1,17 +1,32 @@
 # auto-dim-other-buffers.el
 
-Visually makes non-current buffers less prominent.
+The `auto-dim-other-buffers-mode' is a global minor mode which
+makes non-current buffer less prominent making it more apparent
+which window has a focus.
 
 ![screenshot](screenshot.png)
 
-## Install via [MELPA](http://melpa.milkbox.net/)
+The preferred way to install the mode is by installing a package
+form MELPA:
 
-`M-x` `package-install` `auto-dim-other-buffers`
+    M-x package-install RET auto-dim-other-buffers RET
 
-## Turn it on
+Once installed, the mode can be turned on (globally) with:
 
-`M-x` `auto-dim-other-buffers-mode` (it's a global mode)
+    M-x auto-dim-other-buffers-mode RET
 
-## Customize "dimmed" buffers face
+To make the mode enabled every time Emacs starts, add the following
+to Emacs initialisation file (~/.emacs or ~/.emacs.d/init.el):
 
-By default, "less prominent" means "has a black background". But you might want to change that by customizing `auto-dim-other-buffers-face`.
+    (add-hook 'after-init-hook (lambda ()
+      (when (fboundp 'auto-dim-other-buffers-mode)
+        (auto-dim-other-buffers-mode t))))
+
+To configure how dimmed buffers look like, customise
+`auto-dim-other-buffers-face`.  This can be accomplished by:
+
+    M-x customize-face RET auto-dim-other-buffers-face RET
+
+The `auto-dim-other-buffers-mode` is a global minor mode which
+makes non-current buffer less prominent making it more apparent
+which window has a focus.
