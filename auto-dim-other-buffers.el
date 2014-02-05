@@ -76,7 +76,7 @@
 ;;;###autoload
 (define-minor-mode auto-dim-other-buffers-mode
   "Visually makes non-current buffers less prominent"
-  :lighter " Auto-Dim"
+  :lighter " Dim"
   :global t
   (if auto-dim-other-buffers-mode
       (turn-on-auto-dim-other-buffers)
