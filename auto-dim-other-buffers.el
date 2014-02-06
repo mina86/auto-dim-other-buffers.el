@@ -1,4 +1,4 @@
-;;; auto-dim-other-buffers.el --- Makes non-current buffers less prominent
+;;; auto-dim-other-buffers.el --- Makes non-current buffers less prominent -*- lexical-binding: t -*-
 
 ;; Copyright 2013 Steven Degutis
 ;; Copyright 2013,2014 Google Inc.
