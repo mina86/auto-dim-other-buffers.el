@@ -93,6 +93,11 @@ Currently only mini buffer and echo areas are ignored."
   (buffer-face-set (unless (eq (current-buffer) (window-buffer))
                      'auto-dim-other-buffers-face)))
 
+(defun adob--window-configuration-change-hook ()
+  "For command delete-window(C-x 0)."
+  (adob--dim-all-buffers)
+  (adob--after-change-major-mode-hook))
+
 (defun adob--set-face-on-all-buffers (face)
   "Set FACE on all buffers which are not to be ignored.
 Whether buffer should be ignored is determined by `adob--ignore-buffer'
@@ -120,6 +125,8 @@ function."
   (remove-hook 'after-change-major-mode-hook
                'adob--after-change-major-mode-hook)
   (remove-hook 'next-error-hook 'adob--after-change-major-mode-hook)
+  (remove-hook 'window-configuration-change-hook
+               'adob--window-configuration-change-hook)
   (adob--undim-all-buffers))
 
 (defun turn-on-auto-dim-other-buffers ()
@@ -131,7 +138,9 @@ function."
   (add-hook 'focus-out-hook 'adob--dim-all-buffers)
   (add-hook 'focus-in-hook 'adob--after-change-major-mode-hook)
   (add-hook 'after-change-major-mode-hook 'adob--after-change-major-mode-hook)
-  (add-hook 'next-error-hook 'adob--after-change-major-mode-hook))
+  (add-hook 'next-error-hook 'adob--after-change-major-mode-hook)
+  (add-hook 'window-configuration-change-hook
+            'adob--window-configuration-change-hook))
 
 ;;;###autoload
 (define-minor-mode auto-dim-other-buffers-mode
