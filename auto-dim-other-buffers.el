@@ -8,7 +8,7 @@
 ;;	Michal Nazarewicz <mina86@mina86.com>
 ;; Maintainer: Michal Nazarewicz <mina86@mina86.com>
 ;; URL: https://github.com/mina86/auto-dim-other-buffers.el
-;; Version: 1.5
+;; Version: 1.6
 
 ;; This file is not part of GNU Emacs.
 
@@ -68,6 +68,20 @@ Currently only mini buffer and echo areas are ignored."
       (minibufferp buffer)
       (string-match "^ \\*Echo Area" (buffer-name buffer))))
 
+
+;; current remapping cookie for adob
+(defvar adob-face-mode-remapping nil)
+(make-variable-buffer-local 'adob-face-mode-remapping)
+
+(defun adob--dim-buffer (dim)
+  "Dims or undims current buffer."
+  (when (and (not dim) adob-face-mode-remapping)
+    (face-remap-remove-relative adob-face-mode-remapping))
+  (when dim
+	(setq adob-face-mode-remapping
+		  (face-remap-add-relative 'default 'auto-dim-other-buffers-face)))
+  (force-window-update (current-buffer)))
+
 (defun adob--pre-command-hook ()
   "Record current buffer before the command is run."
   (setq adob--last-buffer (current-buffer)))
@@ -83,33 +97,23 @@ Currently only mini buffer and echo areas are ignored."
     (and (buffer-live-p adob--last-buffer)
          (not (adob--ignore-buffer adob--last-buffer))
          (with-current-buffer adob--last-buffer
-           (buffer-face-set 'auto-dim-other-buffers-face)))
-
+		   (adob--dim-buffer t)))
     ;; now, restore the current buffer, and undim it.
-    (buffer-face-set nil)))
+    (adob--dim-buffer nil)))
 
 (defun adob--after-change-major-mode-hook ()
   "Dim or undim a new buffer if a new window, like help window, has popped up."
-  (buffer-face-set (unless (eq (current-buffer) (window-buffer))
-                     'auto-dim-other-buffers-face)))
+  (adob--dim-buffer (not (eq (current-buffer) (window-buffer)))))
 
-(defun adob--set-face-on-all-buffers (face)
-  "Set FACE on all buffers which are not to be ignored.
+(defun adob--dim-all-buffers (dim)
+  "Dim or undim all buffers which are not to be ignored.
 Whether buffer should be ignored is determined by `adob--ignore-buffer'
 function."
   (save-current-buffer
     (dolist (buffer (buffer-list))
       (unless (adob--ignore-buffer buffer)
         (set-buffer buffer)
-        (buffer-face-set face)))))
-
-(defun adob--undim-all-buffers ()
-  "Undim all buffers."
-  (adob--set-face-on-all-buffers nil))
-
-(defun adob--dim-all-buffers ()
-  "Dim all buffers."
-  (adob--set-face-on-all-buffers 'auto-dim-other-buffers-face))
+        (adob--dim-buffer dim)))))
 
 (defun turn-off-auto-dim-other-buffers ()
   "Turn `auto-dim-other-buffers-mode' off."
@@ -120,12 +124,12 @@ function."
   (remove-hook 'after-change-major-mode-hook
                'adob--after-change-major-mode-hook)
   (remove-hook 'next-error-hook 'adob--after-change-major-mode-hook)
-  (adob--undim-all-buffers))
+  (adob--dim-all-buffers nil))
 
 (defun turn-on-auto-dim-other-buffers ()
   "Turn `auto-dim-other-buffers-mode' on."
   (setq adob--last-buffer nil)
-  (adob--dim-all-buffers)
+  (adob--dim-all-buffers t)
   (add-hook 'pre-command-hook 'adob--pre-command-hook)
   (add-hook 'post-command-hook 'adob--post-command-hook)
   (add-hook 'focus-out-hook 'adob--dim-all-buffers)
