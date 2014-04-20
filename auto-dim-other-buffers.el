@@ -81,15 +81,10 @@ Currently only mini buffer and echo areas are ignored."
       (setq adob--face-mode-remapping)))
   (force-window-update (current-buffer)))
 
-(defun adob--pre-command-hook ()
-  "Record current buffer before the command is run."
-  (setq adob--last-buffer (current-buffer)))
-
 (defun adob--post-command-hook ()
   "If buffer has changed, dim the last one and undim the new one."
   ;; if we haven't switched buffers, do nothing
   (unless (eq (current-buffer) adob--last-buffer)
-
     ;; first, try to dim the last buffer.  if it's nil, then the
     ;; feature was just turned on and all buffers are already
     ;; dimmed. if it's just killed, don't try to set its face.
@@ -98,7 +93,8 @@ Currently only mini buffer and echo areas are ignored."
          (with-current-buffer adob--last-buffer
            (adob--dim-buffer t)))
     ;; now, restore the current buffer, and undim it.
-    (adob--dim-buffer nil)))
+    (adob--dim-buffer nil)
+    (setq adob--last-buffer (current-buffer))))
 
 (defun adob--after-change-major-mode-hook ()
   "Dim or undim a new buffer if a new window, like help window, has popped up."
@@ -117,8 +113,7 @@ function."
 (defun adob--hooks (callback)
   "Add (if CALLBACK is `add-hook') or remove (if `remove-hook') adob hooks."
   (dolist (args
-           '((pre-command-hook adob--pre-command-hook)
-             (post-command-hook adob--post-command-hook)
+           '((post-command-hook adob--post-command-hook)
              (focus-out-hook adob--dim-all-buffers)
              (focus-in-hook adob--after-change-major-mode-hook)
              (after-change-major-mode-hook adob--after-change-major-mode-hook)
