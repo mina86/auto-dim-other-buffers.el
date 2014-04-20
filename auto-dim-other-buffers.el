@@ -114,27 +114,27 @@ function."
         (set-buffer buffer)
         (adob--dim-buffer dim)))))
 
+(defun adob--hooks (callback)
+  "Add (if CALLBACK is `add-hook') or remove (if `remove-hook') adob hooks."
+  (dolist (args
+           '((pre-command-hook adob--pre-command-hook)
+             (post-command-hook adob--post-command-hook)
+             (focus-out-hook adob--dim-all-buffers)
+             (focus-in-hook adob--after-change-major-mode-hook)
+             (after-change-major-mode-hook adob--after-change-major-mode-hook)
+             (next-error-hook 'adob--after-change-major-mode-hook)))
+    (apply callback args)))
+
 (defun turn-off-auto-dim-other-buffers ()
   "Turn `auto-dim-other-buffers-mode' off."
-  (remove-hook 'pre-command-hook 'adob--pre-command-hook)
-  (remove-hook 'post-command-hook 'adob--post-command-hook)
-  (remove-hook 'focus-out-hook 'adob--dim-all-buffers)
-  (remove-hook 'focus-in-hook 'adob--after-change-major-mode-hook)
-  (remove-hook 'after-change-major-mode-hook
-               'adob--after-change-major-mode-hook)
-  (remove-hook 'next-error-hook 'adob--after-change-major-mode-hook)
+  (adob--hooks 'remove-hook)
   (adob--dim-all-buffers nil))
 
 (defun turn-on-auto-dim-other-buffers ()
   "Turn `auto-dim-other-buffers-mode' on."
   (setq adob--last-buffer nil)
   (adob--dim-all-buffers t)
-  (add-hook 'pre-command-hook 'adob--pre-command-hook)
-  (add-hook 'post-command-hook 'adob--post-command-hook)
-  (add-hook 'focus-out-hook 'adob--dim-all-buffers)
-  (add-hook 'focus-in-hook 'adob--after-change-major-mode-hook)
-  (add-hook 'after-change-major-mode-hook 'adob--after-change-major-mode-hook)
-  (add-hook 'next-error-hook 'adob--after-change-major-mode-hook))
+  (adob--hooks 'add-hook))
 
 ;;;###autoload
 (define-minor-mode auto-dim-other-buffers-mode
