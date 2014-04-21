@@ -8,7 +8,7 @@
 ;;	Michal Nazarewicz <mina86@mina86.com>
 ;; Maintainer: Michal Nazarewicz <mina86@mina86.com>
 ;; URL: https://github.com/mina86/auto-dim-other-buffers.el
-;; Version: 1.6.2
+;; Version: 1.6.3
 
 ;; This file is not part of GNU Emacs.
 
@@ -120,25 +120,18 @@ function."
              (next-error-hook 'adob--after-change-major-mode-hook)))
     (apply callback args)))
 
-(defun turn-off-auto-dim-other-buffers ()
-  "Turn `auto-dim-other-buffers-mode' off."
-  (adob--hooks 'remove-hook)
-  (adob--dim-all-buffers nil))
-
-(defun turn-on-auto-dim-other-buffers ()
-  "Turn `auto-dim-other-buffers-mode' on."
-  (setq adob--last-buffer nil)
-  (adob--dim-all-buffers t)
-  (adob--hooks 'add-hook))
-
 ;;;###autoload
 (define-minor-mode auto-dim-other-buffers-mode
   "Visually makes non-current buffers less prominent"
   :lighter " Dim"
   :global t
   (if auto-dim-other-buffers-mode
-      (turn-on-auto-dim-other-buffers)
-    (turn-off-auto-dim-other-buffers)))
+      (progn
+        (setq adob--last-buffer nil)
+        (adob--dim-all-buffers t)
+        (adob--hooks 'add-hook))
+    (adob--hooks 'remove-hook)
+    (adob--dim-all-buffers nil)))
 
 (provide 'auto-dim-other-buffers)
 
