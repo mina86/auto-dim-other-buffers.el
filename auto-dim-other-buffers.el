@@ -8,7 +8,7 @@
 ;;	Michal Nazarewicz <mina86@mina86.com>
 ;; Maintainer: Michal Nazarewicz <mina86@mina86.com>
 ;; URL: https://github.com/mina86/auto-dim-other-buffers.el
-;; Version: 1.6.1
+;; Version: 1.6.2
 
 ;; This file is not part of GNU Emacs.
 
@@ -114,7 +114,7 @@ function."
   "Add (if CALLBACK is `add-hook') or remove (if `remove-hook') adob hooks."
   (dolist (args
            '((post-command-hook adob--post-command-hook)
-             (focus-out-hook adob--dim-all-buffers)
+             (focus-out-hook (lambda () (adob--dim-all-buffers t)))
              (focus-in-hook adob--after-change-major-mode-hook)
              (after-change-major-mode-hook adob--after-change-major-mode-hook)
              (next-error-hook 'adob--after-change-major-mode-hook)))
