@@ -8,7 +8,7 @@
 ;;	Michal Nazarewicz <mina86@mina86.com>
 ;; Maintainer: Michal Nazarewicz <mina86@mina86.com>
 ;; URL: https://github.com/mina86/auto-dim-other-buffers.el
-;; Version: 1.6.3
+;; Version: 1.6.4
 
 ;; This file is not part of GNU Emacs.
 
@@ -58,6 +58,11 @@
   "Face (presumably dimmed somehow) for non-current buffers."
   :group 'auto-dim-other-buffers)
 
+(defcustom auto-dim-other-buffers-dim-on-focus-out t
+  "Whether to dim all buffers when a frame looses focus."
+  :type 'boolean
+  :group 'auto-dim-other-buffers)
+
 (defvar adob--last-buffer nil
   "Buffer we were before command finished.")
 
@@ -100,6 +105,17 @@ Currently only mini buffer and echo areas are ignored."
   "Dim or undim a new buffer if a new window, like help window, has popped up."
   (adob--dim-buffer (not (eq (current-buffer) (window-buffer)))))
 
+(defun adob--focus-out-hook ()
+  "Dim all buffers if `auto-dim-other-buffers-dim-on-focus-out'."
+  (when auto-dim-other-buffers-dim-on-focus-out
+    (adob--dim-all-buffers t)))
+
+(defun adob--focus-in-hook ()
+  "Undim current buffers if `auto-dim-other-buffers-dim-on-focus-out'."
+  (when auto-dim-other-buffers-dim-on-focus-out
+    (adob--dim-buffer nil)
+    (setq adob--last-buffer (current-buffer))))
+
 (defun adob--dim-all-buffers (dim)
   "Dim (if DIM is non-nil) or undim all buffers which are not to be ignored.
 Whether buffer should be ignored is determined by `adob--ignore-buffer'
@@ -114,8 +130,8 @@ function."
   "Add (if CALLBACK is `add-hook') or remove (if `remove-hook') adob hooks."
   (dolist (args
            '((post-command-hook adob--post-command-hook)
-             (focus-out-hook (lambda () (adob--dim-all-buffers t)))
-             (focus-in-hook adob--after-change-major-mode-hook)
+             (focus-out-hook adob--focus-out-hook)
+             (focus-in-hook adob--focus-in-hook)
              (after-change-major-mode-hook adob--after-change-major-mode-hook)
              (next-error-hook 'adob--after-change-major-mode-hook)))
     (apply callback args)))
