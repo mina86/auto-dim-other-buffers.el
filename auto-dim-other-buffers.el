@@ -133,7 +133,7 @@ function."
              (focus-out-hook adob--focus-out-hook)
              (focus-in-hook adob--focus-in-hook)
              (after-change-major-mode-hook adob--after-change-major-mode-hook)
-             (next-error-hook 'adob--after-change-major-mode-hook)))
+             (next-error-hook adob--after-change-major-mode-hook)))
     (apply callback args)))
 
 ;;;###autoload
