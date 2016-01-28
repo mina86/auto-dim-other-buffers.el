@@ -83,7 +83,7 @@ Currently only mini buffer and echo areas are ignored."
             (face-remap-add-relative 'default 'auto-dim-other-buffers-face))
     (when adob--face-mode-remapping
       (face-remap-remove-relative adob--face-mode-remapping)
-      (setq adob--face-mode-remapping)))
+      (setq adob--face-mode-remapping nil)))
   (force-window-update (current-buffer)))
 
 (defun adob--post-command-hook ()
