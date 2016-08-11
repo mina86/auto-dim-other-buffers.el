@@ -1,6 +1,6 @@
 # auto-dim-other-buffers.el
 
-The `auto-dim-other-buffers-mode' is a global minor mode which
+The `auto-dim-other-buffers-mode` is a global minor mode which
 makes non-current buffer less prominent making it more apparent
 which window has a focus.
 
@@ -15,8 +15,8 @@ Once installed, the mode can be turned on (globally) with:
 
     M-x auto-dim-other-buffers-mode RET
 
-To make the mode enabled every time Emacs starts, add the following
-to Emacs initialisation file (~/.emacs or ~/.emacs.d/init.el):
+To make the mode enabled every time Emacs starts, add the following to
+Emacs initialisation file (`~/.emacs` or `~/.emacs.d/init.el`):
 
     (add-hook 'after-init-hook (lambda ()
       (when (fboundp 'auto-dim-other-buffers-mode)
