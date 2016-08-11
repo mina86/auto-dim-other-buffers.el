@@ -67,7 +67,7 @@
   "Buffer we were before command finished.")
 
 (defun adob--ignore-buffer (buffer)
-  "Return whether to ignore BUFFER and do not affect it's state.
+  "Return whether to ignore BUFFER and do not affect its state.
 Currently only mini buffer and echo areas are ignored."
   (or (null buffer)
       (minibufferp buffer)
