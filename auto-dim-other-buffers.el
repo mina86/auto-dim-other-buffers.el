@@ -64,7 +64,7 @@
   :group 'auto-dim-other-buffers)
 
 (defvar adob--last-buffer nil
-  "Buffer we were before command finished.")
+  "Selected buffer before command finished.")
 
 (defun adob--ignore-buffer (buffer)
   "Return whether to ignore BUFFER and do not affect its state.
@@ -88,22 +88,20 @@ Currently only mini buffer and echo areas are ignored."
 
 (defun adob--post-command-hook ()
   "If buffer has changed, dim the last one and undim the new one."
-  ;; if we haven't switched buffers, do nothing
-  (unless (eq (current-buffer) adob--last-buffer)
-    ;; first, try to dim the last buffer.  if it's nil, then the
-    ;; feature was just turned on and all buffers are already
-    ;; dimmed. if it's just killed, don't try to set its face.
-    (and (buffer-live-p adob--last-buffer)
-         (not (adob--ignore-buffer adob--last-buffer))
-         (with-current-buffer adob--last-buffer
-           (adob--dim-buffer t)))
-    ;; now, restore the current buffer, and undim it.
-    (adob--dim-buffer nil)
-    (setq adob--last-buffer (current-buffer))))
-
-(defun adob--after-change-major-mode-hook ()
-  "Dim or undim a new buffer if a new window, like help window, has popped up."
-  (adob--dim-buffer (not (eq (current-buffer) (window-buffer)))))
+  (let ((buf (window-buffer)))
+    ;; if we haven't switched buffers, do nothing
+    (unless (eq buf adob--last-buffer)
+      ;; first, try to dim the last buffer.  if it's nil, then the
+      ;; feature was just turned on and all buffers are already
+      ;; dimmed. if it's just killed, don't try to set its face.
+      (and (buffer-live-p adob--last-buffer)
+           (not (adob--ignore-buffer adob--last-buffer))
+           (with-current-buffer adob--last-buffer
+             (adob--dim-buffer t)))
+      ;; now, restore the selected buffer, and undim it.
+      (with-current-buffer buf
+        (adob--dim-buffer nil))
+      (setq adob--last-buffer buf))))
 
 (defun adob--focus-out-hook ()
   "Dim all buffers if `auto-dim-other-buffers-dim-on-focus-out'."
@@ -131,9 +129,7 @@ function."
   (dolist (args
            '((post-command-hook adob--post-command-hook)
              (focus-out-hook adob--focus-out-hook)
-             (focus-in-hook adob--focus-in-hook)
-             (after-change-major-mode-hook adob--after-change-major-mode-hook)
-             (next-error-hook adob--after-change-major-mode-hook)))
+             (focus-in-hook adob--focus-in-hook)))
     (apply callback args)))
 
 ;;;###autoload
