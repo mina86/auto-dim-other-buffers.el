@@ -74,17 +74,20 @@ Currently only mini buffer and echo areas are ignored."
       (string-match "^ \\*Echo Area" (buffer-name buffer))))
 
 ;; current remapping cookie for adob
-(defvar-local adob--face-mode-remapping nil)
+(defvar-local adob--face-mode-remapping nil
+  "Current remapping cookie for `auto-dim-other-buffers-mode'.")
 
 (defun adob--dim-buffer (dim)
   "Dim (if DIM is non-nil) or undim (otherwise) current buffer."
-  (if dim
-      (setq adob--face-mode-remapping
-            (face-remap-add-relative 'default 'auto-dim-other-buffers-face))
-    (when adob--face-mode-remapping
-      (face-remap-remove-relative adob--face-mode-remapping)
-      (setq adob--face-mode-remapping nil)))
-  (force-window-update (current-buffer)))
+  (when (cond ((and dim (not adob--face-mode-remapping))
+               (setq adob--face-mode-remapping
+                     (face-remap-add-relative 'default
+                                              'auto-dim-other-buffers-face)))
+              ((and (not dim) adob--face-mode-remapping)
+               (face-remap-remove-relative adob--face-mode-remapping)
+               (setq adob--face-mode-remapping nil)
+               t))
+    (force-window-update (current-buffer)))
 
 (defun adob--post-command-hook ()
   "If buffer has changed, dim the last one and undim the new one."
