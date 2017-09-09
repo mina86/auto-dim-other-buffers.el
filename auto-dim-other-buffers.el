@@ -89,7 +89,7 @@ Currently only mini buffer and echo areas are ignored."
                t))
     (force-window-update (current-buffer)))
 
-(defun adob--post-command-hook ()
+(defun adob--buffer-list-update-hook ()
   "If buffer has changed, dim the last one and undim the new one."
   (let ((buf (window-buffer)))
     ;; if we haven't switched buffers, do nothing
@@ -130,7 +130,7 @@ function."
 (defun adob--hooks (callback)
   "Add (if CALLBACK is `add-hook') or remove (if `remove-hook') adob hooks."
   (dolist (args
-           '((post-command-hook adob--post-command-hook)
+           '((buffer-list-update-hook adob--buffer-list-update-hook)
              (focus-out-hook adob--focus-out-hook)
              (focus-in-hook adob--focus-in-hook)))
     (apply callback args)))
