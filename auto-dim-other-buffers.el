@@ -87,7 +87,7 @@ Currently only mini buffer and echo areas are ignored."
                (face-remap-remove-relative adob--face-mode-remapping)
                (setq adob--face-mode-remapping nil)
                t))
-    (force-window-update (current-buffer)))
+    (force-window-update (current-buffer))))
 
 (defun adob--buffer-list-update-hook ()
   "If buffer has changed, dim the last one and undim the new one."
