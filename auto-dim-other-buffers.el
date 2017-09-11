@@ -8,7 +8,7 @@
 ;;	Michal Nazarewicz <mina86@mina86.com>
 ;; Maintainer: Michal Nazarewicz <mina86@mina86.com>
 ;; URL: https://github.com/mina86/auto-dim-other-buffers.el
-;; Version: 1.6.4
+;; Version: 1.7
 
 ;; This file is not part of GNU Emacs.
 
@@ -73,7 +73,6 @@ Currently only mini buffer and echo areas are ignored."
       (minibufferp buffer)
       (string-match "^ \\*Echo Area" (buffer-name buffer))))
 
-;; current remapping cookie for adob
 (defvar-local adob--face-mode-remapping nil
   "Current remapping cookie for `auto-dim-other-buffers-mode'.")
 
