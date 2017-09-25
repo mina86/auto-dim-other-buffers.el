@@ -71,8 +71,8 @@
 (defvar adob--last-buffer nil
   "Selected buffer before command finished.")
 
-(defun adob--ignore-buffer (buffer)
-  "Return whether to ignore BUFFER and do not affect its state.
+(defun adob--never-dim-p (buffer)
+  "Return whether to never dim BUFFER.
 Currently only mini buffer and echo areas are ignored."
   (or (null buffer)
       (minibufferp buffer)
@@ -104,7 +104,7 @@ Currently only mini buffer and echo areas are ignored."
                (not (minibufferp buf))))
       ;; Dim last buffer if it’s live and not ignored.
       (and (buffer-live-p adob--last-buffer)
-           (not (adob--ignore-buffer adob--last-buffer))
+           (not (adob--never-dim-p adob--last-buffer))
            (with-current-buffer adob--last-buffer
              (adob--dim-buffer t)))
       ;; Undim the new buffer.
@@ -125,11 +125,11 @@ Currently only mini buffer and echo areas are ignored."
 
 (defun adob--dim-all-buffers (dim)
   "Dim (if DIM is non-nil) or undim all buffers which are not to be ignored.
-Whether buffer should be ignored is determined by `adob--ignore-buffer'
+Whether buffer should be ignored is determined by `adob--never-dim-p'
 function."
   (save-current-buffer
     (dolist (buffer (buffer-list))
-      (unless (adob--ignore-buffer buffer)
+      (unless (adob--never-dim-p buffer)
         (set-buffer buffer)
         (adob--dim-buffer dim)))))
 
