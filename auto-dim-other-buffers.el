@@ -63,6 +63,11 @@
   :type 'boolean
   :group 'auto-dim-other-buffers)
 
+(defcustom auto-dim-other-buffers-dim-on-switch-to-minibuffer t
+  "Whether to dim last buffer when switching to minibuffer or echo area."
+  :type 'boolean
+  :group 'auto-dim-other-buffers)
+
 (defvar adob--last-buffer nil
   "Selected buffer before command finished.")
 
@@ -98,6 +103,12 @@ Currently only mini buffer and echo areas are ignored."
       ;; dimmed. if it's just killed, don't try to set its face.
       (and (buffer-live-p adob--last-buffer)
            (not (adob--ignore-buffer adob--last-buffer))
+           ;; By default, dim last buffer on switch to any other buffer. But if
+           ;; option is nil, then don't dim last buffer on switch to minibuffer
+           ;; or echo area.
+           (or auto-dim-other-buffers-dim-on-switch-to-minibuffer
+               (not (or (minibufferp (current-buffer))
+                        (string-match "^ \\*Echo Area" (buffer-name (current-buffer))))))
            (with-current-buffer adob--last-buffer
              (adob--dim-buffer t)))
       ;; now, restore the selected buffer, and undim it.
