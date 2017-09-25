@@ -1,5 +1,7 @@
 # auto-dim-other-buffers.el
 
+[![MELPA](https://melpa.org/packages/auto-dim-other-buffers-badge.svg)](https://melpa.org/#/auto-dim-other-buffers)
+
 The `auto-dim-other-buffers-mode` is a global minor mode which
 makes non-current buffer less prominent making it more apparent
 which window has a focus.
