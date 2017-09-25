@@ -8,7 +8,7 @@
 ;;	Michal Nazarewicz <mina86@mina86.com>
 ;; Maintainer: Michal Nazarewicz <mina86@mina86.com>
 ;; URL: https://github.com/mina86/auto-dim-other-buffers.el
-;; Version: 1.7
+;; Version: 1.8
 
 ;; This file is not part of GNU Emacs.
 
@@ -96,22 +96,18 @@ Currently only mini buffer and echo areas are ignored."
 (defun adob--buffer-list-update-hook ()
   "If buffer has changed, dim the last one and undim the new one."
   (let ((buf (window-buffer)))
-    ;; if we haven't switched buffers, do nothing
-    (unless (eq buf adob--last-buffer)
-      ;; first, try to dim the last buffer.  if it's nil, then the
-      ;; feature was just turned on and all buffers are already
-      ;; dimmed. if it's just killed, don't try to set its face.
+    (when (and
+           ;; Don’t do anything if buffer didn’t changed.
+           (not (eq buf adob--last-buffer))
+           ;; If so configured, don’t dim when switching to minibuffer.
+           (or auto-dim-other-buffers-dim-on-switch-to-minibuffer
+               (not (minibufferp buf))))
+      ;; Dim last buffer if it’s live and not ignored.
       (and (buffer-live-p adob--last-buffer)
            (not (adob--ignore-buffer adob--last-buffer))
-           ;; By default, dim last buffer on switch to any other buffer. But if
-           ;; option is nil, then don't dim last buffer on switch to minibuffer
-           ;; or echo area.
-           (or auto-dim-other-buffers-dim-on-switch-to-minibuffer
-               (not (or (minibufferp (current-buffer))
-                        (string-match "^ \\*Echo Area" (buffer-name (current-buffer))))))
            (with-current-buffer adob--last-buffer
              (adob--dim-buffer t)))
-      ;; now, restore the selected buffer, and undim it.
+      ;; Undim the new buffer.
       (with-current-buffer buf
         (adob--dim-buffer nil))
       (setq adob--last-buffer buf))))
