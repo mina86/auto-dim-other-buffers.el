@@ -6,7 +6,7 @@ The `auto-dim-other-buffers-mode` is a global minor mode which
 makes non-current buffer less prominent making it more apparent
 which window has a focus.
 
-![screenshot](screenshot.png)
+![Demo](screenshot.gif)
 
 The preferred way to install the mode is by installing a package
 form MELPA:
