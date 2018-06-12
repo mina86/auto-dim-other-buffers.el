@@ -54,7 +54,8 @@
 
 ;;; Code:
 
-(defface auto-dim-other-buffers-face '((t :background "black"))
+(defface auto-dim-other-buffers-face
+  '((((background light)) :background "#eff") (t :background "#122"))
   "Face (presumably dimmed somehow) for non-current buffers."
   :group 'auto-dim-other-buffers)
 
