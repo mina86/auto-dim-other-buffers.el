@@ -8,7 +8,7 @@
 ;;	Michal Nazarewicz <mina86@mina86.com>
 ;; Maintainer: Michal Nazarewicz <mina86@mina86.com>
 ;; URL: https://github.com/mina86/auto-dim-other-buffers.el
-;; Version: 1.8.3
+;; Version: 1.9
 
 ;; This file is not part of GNU Emacs.
 
@@ -126,13 +126,15 @@ Currently only mini buffer and echo areas are ignored."
     (adob--undim-buffer)
     (setq adob--last-buffer (current-buffer))))
 
-(defun adob--dim-all-buffers ()
-  "Dim all buffers which are not to be ignored.
-Whether buffer should be ignored is determined by `adob--never-dim-p'
-function."
+(defun adob--dim-all-buffers (&optional except-for)
+  "Dim all buffers which except for EXCEPT-FOR and any ignored buffers.
+If EXCEPT-FOR is non-nil, it specifies buffer which should not be
+affected.  Similarly, any buffers for which `adob--never-dim-p'
+function returns non-nil won’t be touched either."
   (save-current-buffer
     (dolist (buffer (buffer-list))
-      (unless (adob--never-dim-p buffer)
+      (unless (or (eq buffer except-for)
+                  (adob--never-dim-p buffer))
         (set-buffer buffer)
         (adob--dim-buffer)))))
 
@@ -148,11 +150,11 @@ function."
 (define-minor-mode auto-dim-other-buffers-mode
   "Visually makes non-current buffers less prominent"
   :global t
-  (setq adob--last-buffer nil)
   (if auto-dim-other-buffers-mode
       (progn
-        (adob--dim-all-buffers)
+        (adob--dim-all-buffers (setq adob--last-buffer (current-buffer)))
         (adob--hooks 'add-hook))
+    (setq adob--last-buffer nil)
     (adob--hooks 'remove-hook)
     (save-current-buffer
       (dolist (buffer (buffer-list))
