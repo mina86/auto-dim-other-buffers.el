@@ -8,7 +8,7 @@
 ;;	Michal Nazarewicz <mina86@mina86.com>
 ;; Maintainer: Michal Nazarewicz <mina86@mina86.com>
 ;; URL: https://github.com/mina86/auto-dim-other-buffers.el
-;; Version: 1.9
+;; Version: 1.9.1
 
 ;; This file is not part of GNU Emacs.
 
@@ -117,8 +117,13 @@ Currently only mini buffer and echo areas are ignored."
 
 (defun adob--focus-out-hook ()
   "Dim all buffers if `auto-dim-other-buffers-dim-on-focus-out'."
-  (when auto-dim-other-buffers-dim-on-focus-out
-    (adob--dim-all-buffers)))
+  (when (and auto-dim-other-buffers-dim-on-focus-out
+             adob--last-buffer
+             (buffer-live-p adob--last-buffer)
+             (not (adob--never-dim-p adob--last-buffer)))
+    (with-current-buffer adob--last-buffer
+      (adob--dim-buffer))
+    (setq adob--last-buffer nil)))
 
 (defun adob--focus-in-hook ()
   "Undim current buffers if `auto-dim-other-buffers-dim-on-focus-out'."
@@ -126,37 +131,26 @@ Currently only mini buffer and echo areas are ignored."
     (adob--undim-buffer)
     (setq adob--last-buffer (current-buffer))))
 
-(defun adob--dim-all-buffers (&optional except-for)
-  "Dim all buffers which except for EXCEPT-FOR and any ignored buffers.
-If EXCEPT-FOR is non-nil, it specifies buffer which should not be
-affected.  Similarly, any buffers for which `adob--never-dim-p'
-function returns non-nil won’t be touched either."
-  (save-current-buffer
-    (dolist (buffer (buffer-list))
-      (unless (or (eq buffer except-for)
-                  (adob--never-dim-p buffer))
-        (set-buffer buffer)
-        (adob--dim-buffer)))))
-
-(defun adob--hooks (callback)
-  "Add (if CALLBACK is `add-hook') or remove (if `remove-hook') adob hooks."
-  (dolist (args
-           '((buffer-list-update-hook adob--buffer-list-update-hook)
-             (focus-out-hook adob--focus-out-hook)
-             (focus-in-hook adob--focus-in-hook)))
-    (apply callback args)))
-
 ;;;###autoload
 (define-minor-mode auto-dim-other-buffers-mode
   "Visually makes non-current buffers less prominent"
   :global t
-  (if auto-dim-other-buffers-mode
-      (progn
-        (adob--dim-all-buffers (setq adob--last-buffer (current-buffer)))
-        (adob--hooks 'add-hook))
-    (setq adob--last-buffer nil)
-    (adob--hooks 'remove-hook)
-    (save-current-buffer
+  (let ((callback (if auto-dim-other-buffers-mode #'add-hook #'remove-hook)))
+    (dolist (args '((buffer-list-update-hook adob--buffer-list-update-hook)
+                    (focus-out-hook adob--focus-out-hook)
+                    (focus-in-hook adob--focus-in-hook)))
+      (apply callback args)))
+
+  (save-current-buffer
+    (if auto-dim-other-buffers-mode
+        (progn
+          (setq adob--last-buffer (current-buffer))
+          (dolist (buffer (buffer-list))
+            (unless (or (eq buffer adob--last-buffer)
+                        (adob--never-dim-p buffer))
+              (set-buffer buffer)
+              (adob--dim-buffer))))
+      (setq adob--last-buffer nil)
       (dolist (buffer (buffer-list))
         (when (local-variable-p 'adob--face-mode-remapping buffer)
           (set-buffer buffer)
