@@ -8,7 +8,7 @@
 ;;	Michal Nazarewicz <mina86@mina86.com>
 ;; Maintainer: Michal Nazarewicz <mina86@mina86.com>
 ;; URL: https://github.com/mina86/auto-dim-other-buffers.el
-;; Version: 1.8.1
+;; Version: 1.8.2
 
 ;; This file is not part of GNU Emacs.
 
@@ -147,7 +147,6 @@ function."
 ;;;###autoload
 (define-minor-mode auto-dim-other-buffers-mode
   "Visually makes non-current buffers less prominent"
-  :lighter " Dim"
   :global t
   (setq adob--last-buffer nil)
   (if auto-dim-other-buffers-mode
