@@ -8,7 +8,7 @@
 ;;	Michal Nazarewicz <mina86@mina86.com>
 ;; Maintainer: Michal Nazarewicz <mina86@mina86.com>
 ;; URL: https://github.com/mina86/auto-dim-other-buffers.el
-;; Version: 1.8
+;; Version: 1.8.1
 
 ;; This file is not part of GNU Emacs.
 
@@ -118,7 +118,7 @@ Currently only mini buffer and echo areas are ignored."
 (defun adob--focus-out-hook ()
   "Dim all buffers if `auto-dim-other-buffers-dim-on-focus-out'."
   (when auto-dim-other-buffers-dim-on-focus-out
-    (adob--dim-all-buffers t)))
+    (adob--dim-all-buffers)))
 
 (defun adob--focus-in-hook ()
   "Undim current buffers if `auto-dim-other-buffers-dim-on-focus-out'."
@@ -126,15 +126,15 @@ Currently only mini buffer and echo areas are ignored."
     (adob--undim-buffer)
     (setq adob--last-buffer (current-buffer))))
 
-(defun adob--dim-all-buffers (dim)
-  "Dim (if DIM is non-nil) or undim all buffers which are not to be ignored.
+(defun adob--dim-all-buffers ()
+  "Dim all buffers which are not to be ignored.
 Whether buffer should be ignored is determined by `adob--never-dim-p'
 function."
   (save-current-buffer
     (dolist (buffer (buffer-list))
       (unless (adob--never-dim-p buffer)
         (set-buffer buffer)
-        (if dim (adob--dim-buffer) (adob--undim-buffer))))))
+        (adob--dim-buffer)))))
 
 (defun adob--hooks (callback)
   "Add (if CALLBACK is `add-hook') or remove (if `remove-hook') adob hooks."
@@ -149,13 +149,19 @@ function."
   "Visually makes non-current buffers less prominent"
   :lighter " Dim"
   :global t
+  (setq adob--last-buffer nil)
   (if auto-dim-other-buffers-mode
       (progn
-        (setq adob--last-buffer nil)
-        (adob--dim-all-buffers t)
+        (adob--dim-all-buffers)
         (adob--hooks 'add-hook))
     (adob--hooks 'remove-hook)
-    (adob--dim-all-buffers nil)))
+    (save-current-buffer
+      (dolist (buffer (buffer-list))
+        (when (local-variable-p 'adob--face-mode-remapping buffer)
+          (set-buffer buffer)
+          (when adob--face-mode-remapping
+            (face-remap-remove-relative adob--face-mode-remapping))
+          (kill-local-variable 'adob--face-mode-remapping))))))
 
 (provide 'auto-dim-other-buffers)
 
