@@ -2,14 +2,16 @@
 
 [![MELPA](https://melpa.org/packages/auto-dim-other-buffers-badge.svg)](https://melpa.org/#/auto-dim-other-buffers)
 
-The `auto-dim-other-buffers-mode` is a global minor mode which
-makes non-current buffer less prominent making it more apparent
-which window has a focus.
+The `auto-dim-other-buffers-mode` is a global minor mode which makes
+windows without focus less prominent.  With many windows in a frame,
+the idea is that this mode helps recognise which is the selected
+window by providing a non-intrusive but still noticeable visual
+indicator.
 
 ![Demo](screenshot.gif)
 
-The preferred way to install the mode is by installing a package
-form MELPA:
+The preferred way to install the mode is by grabbing
+`auto-dim-other-buffers` package form MELPA:
 
     M-x package-install RET auto-dim-other-buffers RET
 
@@ -29,6 +31,11 @@ To configure how dimmed buffers look like, customise
 
     M-x customize-face RET auto-dim-other-buffers-face RET
 
-The `auto-dim-other-buffers-mode` is a global minor mode which
-makes non-current buffer less prominent making it more apparent
-which window has a focus.
+More customisation can be found in `auto-dim-other-buffers`
+customisation group which can be accessed with:
+
+    M-x customize-group RET auto-dim-other-buffers RET
+
+Note that despite it’s name, since Emacs 27.1 the mode operates on *windows*
+rather than buffers.  I.e. selected window is highlighted and all other
+windows are dimmed even if they display the same buffer.
