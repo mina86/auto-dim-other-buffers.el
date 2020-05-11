@@ -9,7 +9,7 @@
 ;;	Michal Nazarewicz <mina86@mina86.com>
 ;; Maintainer: Michal Nazarewicz <mina86@mina86.com>
 ;; URL: https://github.com/mina86/auto-dim-other-buffers.el
-;; Version: 1.9.2
+;; Version: 1.9.3
 
 ;; This file is not part of GNU Emacs.
 
@@ -100,21 +100,21 @@ Currently only mini buffer and echo areas are ignored."
 (defun adob--buffer-list-update-hook ()
   "If buffer has changed, dim the last one and undim the new one."
   (let ((buf (window-buffer)))
-    (when (and
-           ;; Don’t do anything if buffer didn’t changed.
-           (not (eq buf adob--last-buffer))
-           ;; If so configured, don’t dim when switching to minibuffer.
-           (or auto-dim-other-buffers-dim-on-switch-to-minibuffer
-               (not (minibufferp buf))))
-      ;; Dim last buffer if it’s live and not ignored.
-      (and (buffer-live-p adob--last-buffer)
-           (not (adob--never-dim-p adob--last-buffer))
-           (with-current-buffer adob--last-buffer
-             (adob--dim-buffer)))
-      ;; Undim the new buffer.
-      (with-current-buffer buf
-        (adob--undim-buffer))
-      (setq adob--last-buffer buf))))
+    (if (not (eq buf (current-buffer)))
+        ;; A new buffer is displayed in some window somewhere.  This is not the
+        ;; selected buffer though so dim it.
+        (unless (adob--never-dim-p (current-buffer))
+          (adob--dim-buffer))
+      (unless (or (eq buf adob--last-buffer)
+                  (and auto-dim-other-buffers-dim-on-switch-to-minibuffer
+                       (minibufferp buf)))
+        ;; Buffer has changed.  Dim the old one and undim the new.
+        (and (buffer-live-p adob--last-buffer)
+             (not (adob--never-dim-p adob--last-buffer))
+             (with-current-buffer adob--last-buffer
+               (adob--dim-buffer)))
+        (adob--undim-buffer)
+        (setq adob--last-buffer buf)))))
 
 (defun adob--focus-out-hook ()
   "Dim all buffers if `auto-dim-other-buffers-dim-on-focus-out'."
