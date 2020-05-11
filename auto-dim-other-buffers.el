@@ -1,14 +1,15 @@
 ;;; auto-dim-other-buffers.el --- Makes non-current buffers less prominent -*- lexical-binding: t -*-
 
 ;; Copyright 2013 Steven Degutis
-;; Copyright 2013,2014 Google Inc.
+;; Copyright 2013-2017 Google Inc.
 ;; Copyright 2014 Justin Talbott
+;; Copyright 2018-2020 Michał Nazarewicz
 
 ;; Author: Steven Degutis
 ;;	Michal Nazarewicz <mina86@mina86.com>
 ;; Maintainer: Michal Nazarewicz <mina86@mina86.com>
 ;; URL: https://github.com/mina86/auto-dim-other-buffers.el
-;; Version: 1.9.1
+;; Version: 1.9.2
 
 ;; This file is not part of GNU Emacs.
 
@@ -128,8 +129,9 @@ Currently only mini buffer and echo areas are ignored."
 (defun adob--focus-in-hook ()
   "Undim current buffers if `auto-dim-other-buffers-dim-on-focus-out'."
   (when auto-dim-other-buffers-dim-on-focus-out
-    (adob--undim-buffer)
-    (setq adob--last-buffer (current-buffer))))
+    (with-current-buffer (window-buffer)
+      (adob--undim-buffer)
+      (setq adob--last-buffer (current-buffer)))))
 
 ;;;###autoload
 (define-minor-mode auto-dim-other-buffers-mode
@@ -144,7 +146,7 @@ Currently only mini buffer and echo areas are ignored."
   (save-current-buffer
     (if auto-dim-other-buffers-mode
         (progn
-          (setq adob--last-buffer (current-buffer))
+          (setq adob--last-buffer (window-buffer))
           (dolist (buffer (buffer-list))
             (unless (or (eq buffer adob--last-buffer)
                         (adob--never-dim-p buffer))
