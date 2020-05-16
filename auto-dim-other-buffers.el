@@ -133,15 +133,29 @@ Currently only mini buffer and echo areas are ignored."
       (adob--undim-buffer)
       (setq adob--last-buffer (current-buffer)))))
 
+(defun adob--focus-change-hook ()
+  "Based on focus status of selected frame dim or undim selected buffer.
+Do nothing if `auto-dim-other-buffers-dim-on-focus-out' is nil."
+  (if (with-no-warnings (frame-focus-state))
+      (adob--focus-in-hook)
+    (adob--focus-out-hook)))
+
 ;;;###autoload
 (define-minor-mode auto-dim-other-buffers-mode
   "Visually makes non-current buffers less prominent"
   :global t
   (let ((callback (if auto-dim-other-buffers-mode #'add-hook #'remove-hook)))
-    (dolist (args '((buffer-list-update-hook adob--buffer-list-update-hook)
-                    (focus-out-hook adob--focus-out-hook)
-                    (focus-in-hook adob--focus-in-hook)))
-      (apply callback args)))
+    (funcall callback 'buffer-list-update-hook #'adob--buffer-list-update-hook)
+    ;; Prefer ‘after-focus-change-function’ (which was added in Emacs 27.1) to
+    ;; ‘focus-out-hook’ and ‘focus-in-hook’.
+    (if (boundp 'after-focus-change-function)
+        (if auto-dim-other-buffers-mode
+            (add-function :after after-focus-change-function
+                          #'adob--focus-change-hook)
+          (remove-function after-focus-change-function
+                           #'adob--focus-change-hook))
+      (funcall callback 'focus-out-hook #'adob--focus-out-hook)
+      (funcall callback 'focus-in-hook #'adob--focus-in-hook)))
 
   (save-current-buffer
     (if auto-dim-other-buffers-mode
