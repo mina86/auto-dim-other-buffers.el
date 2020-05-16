@@ -9,7 +9,7 @@
 ;;	Michal Nazarewicz <mina86@mina86.com>
 ;; Maintainer: Michal Nazarewicz <mina86@mina86.com>
 ;; URL: https://github.com/mina86/auto-dim-other-buffers.el
-;; Version: 1.9.5
+;; Version: 1.9.6
 
 ;; This file is not part of GNU Emacs.
 
@@ -75,10 +75,8 @@
 
 (defun adob--never-dim-p (buffer)
   "Return whether to never dim BUFFER.
-Currently only mini buffer and echo areas are ignored."
-  (or (null buffer)
-      (minibufferp buffer)
-      (string-prefix-p " " (buffer-name buffer))))
+Currently, no hidden buffers (ones whose name starts with a space) are dimmed."
+  (eq t (compare-strings " " 0 1 (buffer-name buffer) 0 1)))
 
 (defvar-local adob--face-mode-remapping nil
   "Current remapping cookie for `auto-dim-other-buffers-mode'.")
@@ -130,7 +128,6 @@ Otherwise, if a new buffer is displayed somewhere, dim it."
 (defun adob--focus-out-hook ()
   "Dim all buffers if `auto-dim-other-buffers-dim-on-focus-out'."
   (when (and auto-dim-other-buffers-dim-on-focus-out
-             adob--last-buffer
              (buffer-live-p adob--last-buffer)
              (not (adob--never-dim-p adob--last-buffer)))
     (with-current-buffer adob--last-buffer
