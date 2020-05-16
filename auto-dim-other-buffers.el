@@ -9,7 +9,7 @@
 ;;	Michal Nazarewicz <mina86@mina86.com>
 ;; Maintainer: Michal Nazarewicz <mina86@mina86.com>
 ;; URL: https://github.com/mina86/auto-dim-other-buffers.el
-;; Version: 1.9.3
+;; Version: 1.9.4
 
 ;; This file is not part of GNU Emacs.
 
@@ -106,7 +106,7 @@ Currently only mini buffer and echo areas are ignored."
         (unless (adob--never-dim-p (current-buffer))
           (adob--dim-buffer))
       (unless (or (eq buf adob--last-buffer)
-                  (and auto-dim-other-buffers-dim-on-switch-to-minibuffer
+                  (and (not auto-dim-other-buffers-dim-on-switch-to-minibuffer)
                        (minibufferp buf)))
         ;; Buffer has changed.  Dim the old one and undim the new.
         (and (buffer-live-p adob--last-buffer)
