@@ -9,7 +9,7 @@
 ;;	Michal Nazarewicz <mina86@mina86.com>
 ;; Maintainer: Michal Nazarewicz <mina86@mina86.com>
 ;; URL: https://github.com/mina86/auto-dim-other-buffers.el
-;; Version: 1.9.4
+;; Version: 1.9.5
 
 ;; This file is not part of GNU Emacs.
 
@@ -97,24 +97,35 @@ Currently only mini buffer and echo areas are ignored."
     (setq adob--face-mode-remapping nil)
     (force-window-update (current-buffer))))
 
-(defun adob--buffer-list-update-hook ()
-  "If buffer has changed, dim the last one and undim the new one."
+(defun adob--update ()
+  "Make sure that selected buffer is not dimmed.
+Dim previously selected buffer if selection has changed."
   (let ((buf (window-buffer)))
-    (if (not (eq buf (current-buffer)))
-        ;; A new buffer is displayed in some window somewhere.  This is not the
-        ;; selected buffer though so dim it.
-        (unless (adob--never-dim-p (current-buffer))
+    (unless (or (eq buf adob--last-buffer)
+                (and (not auto-dim-other-buffers-dim-on-switch-to-minibuffer)
+                     (minibufferp buf)))
+      ;; Selected buffer has changed.  Dim the old one and undim the new.
+      (save-current-buffer
+        (when (and (buffer-live-p adob--last-buffer)
+                   (not (adob--never-dim-p adob--last-buffer)))
+          (set-buffer adob--last-buffer)
           (adob--dim-buffer))
-      (unless (or (eq buf adob--last-buffer)
-                  (and (not auto-dim-other-buffers-dim-on-switch-to-minibuffer)
-                       (minibufferp buf)))
-        ;; Buffer has changed.  Dim the old one and undim the new.
-        (and (buffer-live-p adob--last-buffer)
-             (not (adob--never-dim-p adob--last-buffer))
-             (with-current-buffer adob--last-buffer
-               (adob--dim-buffer)))
+        (set-buffer buf)
         (adob--undim-buffer)
         (setq adob--last-buffer buf)))))
+
+(defun adob--buffer-list-update-hook ()
+  "React to buffer list changes.
+If selected buffer has changed, change which buffer is dimmed.
+Otherwise, if a new buffer is displayed somewhere, dim it."
+  (let ((current (current-buffer)))
+    (if (eq (window-buffer) current)
+        ;; Selected buffer has changed.  Update what we dim.
+        (adob--update)
+      ;; A new buffer is displayed somewhere but it’s not the selected one so
+      ;; dim it.
+      (unless (adob--never-dim-p current)
+        (adob--dim-buffer)))))
 
 (defun adob--focus-out-hook ()
   "Dim all buffers if `auto-dim-other-buffers-dim-on-focus-out'."
@@ -126,18 +137,12 @@ Currently only mini buffer and echo areas are ignored."
       (adob--dim-buffer))
     (setq adob--last-buffer nil)))
 
-(defun adob--focus-in-hook ()
-  "Undim current buffers if `auto-dim-other-buffers-dim-on-focus-out'."
-  (when auto-dim-other-buffers-dim-on-focus-out
-    (with-current-buffer (window-buffer)
-      (adob--undim-buffer)
-      (setq adob--last-buffer (current-buffer)))))
-
 (defun adob--focus-change-hook ()
   "Based on focus status of selected frame dim or undim selected buffer.
-Do nothing if `auto-dim-other-buffers-dim-on-focus-out' is nil."
+Do nothing if `auto-dim-other-buffers-dim-on-focus-out' is nil
+and frame’s doesn’t have focus."
   (if (with-no-warnings (frame-focus-state))
-      (adob--focus-in-hook)
+      (adob--update)
     (adob--focus-out-hook)))
 
 ;;;###autoload
@@ -155,7 +160,7 @@ Do nothing if `auto-dim-other-buffers-dim-on-focus-out' is nil."
           (remove-function after-focus-change-function
                            #'adob--focus-change-hook))
       (funcall callback 'focus-out-hook #'adob--focus-out-hook)
-      (funcall callback 'focus-in-hook #'adob--focus-in-hook)))
+      (funcall callback 'focus-in-hook #'adob--update)))
 
   (save-current-buffer
     (if auto-dim-other-buffers-mode
