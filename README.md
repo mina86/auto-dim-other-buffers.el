@@ -8,7 +8,7 @@ the idea is that this mode helps recognise which is the selected
 window by providing a non-intrusive but still noticeable visual
 indicator.
 
-![Demo](screenshot.gif)
+[![Demo](screenshot.gif)](https://www.youtube.com/watch?v=mJ4iaAqdtTM)
 
 The preferred way to install the mode is by grabbing
 `auto-dim-other-buffers` package form MELPA:
