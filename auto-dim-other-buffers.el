@@ -2,7 +2,7 @@
 ;; Author: Michal Nazarewicz <mina86@mina86.com>
 ;; Maintainer: Michal Nazarewicz <mina86@mina86.com>
 ;; URL: https://github.com/mina86/auto-dim-other-buffers.el
-;; Version: 2.0
+;; Version: 2.0.1
 
 ;; This file is not part of GNU Emacs.
 
@@ -52,12 +52,12 @@
 ;;
 ;;     M-x customize-group RET auto-dim-other-buffers RET
 
-;; Note that despite it’s name, since Emacs 27.1 the mode operates on *windows*
+;; Note that despite it’s name, since Emacs 27 the mode operates on *windows*
 ;; rather than buffers.  I.e. selected window is highlighted and all other
 ;; windows are dimmed even if they display the same buffer.  In older Emacs
 ;; versions the mode falls back to the old behaviour where all windows
-;; displaying selected buffer are highlighted.  This historic behaviour is where
-;; the mode gets its name from.
+;; displaying selected buffer are highlighted.  This historic behaviour
+;; is where the mode gets its name from.
 
 ;;; Code:
 
@@ -77,12 +77,12 @@
   :group 'auto-dim-other-buffers)
 
 
-(defconst adob--adow-mode (not (version< emacs-version "27.1"))
+(defconst adob--adow-mode (not (version< emacs-version "27.0.90"))
   "Whether Emacs supports :filtered faces.
 If t, the code will run in ‘auto dim other window’ mode (hence
 ‘adow-mode’) which operates on windows rather than buffers.  To
 operate on windows, Emacs must support :filtered face predicate
-which has been added in Emacs 27.1.")
+which has been added in Emacs 27.")
 
 (defconst adob--remap-face
   (if adob--adow-mode
@@ -267,7 +267,7 @@ windows in a frame, the idea is that this mode helps recognise
 which is the selected window by providing a non-intrusive but
 still noticeable visual indicator.
 
-Note that despite it’s name, since Emacs 27.1 this mode operates
+Note that despite it’s name, since Emacs 27 this mode operates
 on *windows* rather than buffers.  In older versions of Emacs, if
 a buffer was displayed in multiple windows, none of them would be
 dimmed even though at most one could have focus.  This historic
@@ -277,8 +277,8 @@ behaviour is where the mode gets its name from."
   (let ((callback (if auto-dim-other-buffers-mode #'add-hook #'remove-hook)))
     (funcall callback 'window-configuration-change-hook #'adob--rescan-windows)
     (funcall callback 'buffer-list-update-hook #'adob--buffer-list-update-hook)
-    ;; Prefer ‘after-focus-change-function’ (which was added in Emacs 27.1) to
-    ;; ‘focus-out-hook’ and ‘focus-in-hook’.
+    ;; Prefer ‘after-focus-change-function’ (which was added in Emacs 27)
+    ;; to ‘focus-out-hook’ and ‘focus-in-hook’.
     (if (boundp 'after-focus-change-function)
         (if auto-dim-other-buffers-mode
             (add-function :after after-focus-change-function
