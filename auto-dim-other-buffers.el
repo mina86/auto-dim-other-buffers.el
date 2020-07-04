@@ -2,7 +2,7 @@
 ;; Author: Michal Nazarewicz <mina86@mina86.com>
 ;; Maintainer: Michal Nazarewicz <mina86@mina86.com>
 ;; URL: https://github.com/mina86/auto-dim-other-buffers.el
-;; Version: 2.0.1
+;; Version: 2.0.2
 
 ;; This file is not part of GNU Emacs.
 
@@ -93,10 +93,9 @@ Depending on whether Emacs supports :filtered predicate, this
 will or will not use it.  See ‘adob--adow-mode’.")
 
 (defvar adob--last-buffer nil
-  "Last selected buffer which, i.e. buffer which is currently not dimmed.")
+  "Last selected buffer, i.e. buffer which is currently not dimmed.")
 (defvar adob--last-window nil
-  "Last selected buffer which, i.e. window which is currently not dimmed.
-This is only used in adow mode (i.e. if ‘adob--adow-mode’).")
+  "Last selected window, i.e. window which is currently not dimmed.")
 
 (defun adob--never-dim-p (buffer)
   "Return whether to never dim BUFFER.
@@ -170,9 +169,11 @@ Dim previously selected window if selection has changed."
     (let* ((wnd (selected-window))
            (buf (window-buffer wnd)))
 
-      ;; If window has changed, update old and new window’s parameters.
-      (when (and adob--adow-mode
-                 (not (eq wnd adob--last-window)))
+      (cond
+       ((eq wnd adob--last-window))
+       (adob--adow-mode
+        ;; adow-mode is active and window has changed.  Update the adob--dim
+        ;; parameter accordingly.
         (when (and (window-live-p adob--last-window)
                    (not (window-minibuffer-p adob--last-window)))
           (set-window-parameter adob--last-window 'adob--dim t)
@@ -181,6 +182,20 @@ Dim previously selected window if selection has changed."
         (unless (window-minibuffer-p adob--last-window)
           (set-window-parameter adob--last-window 'adob--dim nil)
           (force-window-update adob--last-window)))
+       (t
+        ;; Window has changed but adow-mode is not active.  Make sure buffer
+        ;; displayed in the old window is dimmed.  This is necessary because
+        ;; a command (e.g. ‘quite-window’) could change to a different window
+        ;; while at the same time changing buffer in the old window.  In this
+        ;; scenario, we’re never dimming the buffer in the old window.
+        (and (window-live-p adob--last-window)
+             (not (window-minibuffer-p adob--last-window))
+             (let ((old-buf (window-buffer adob--last-window)))
+               (unless (or (eq old-buf buf)
+                           (eq old-buf adob--last-buffer))
+                 (adob--dim-buffer old-buf)
+                 (force-window-update adob--last-window))))
+        (setq adob--last-window wnd)))
 
       ;; If buffer has changed, update their status.
       (unless (eq buf adob--last-buffer)
@@ -235,16 +250,17 @@ Otherwise, if a new buffer is displayed somewhere, dim it."
   "Dim all buffers if `auto-dim-other-buffers-dim-on-focus-out'."
   (cond ((not (and auto-dim-other-buffers-dim-on-focus-out
                    (buffer-live-p adob--last-buffer))))
-        ((and (window-live-p adob--last-window)
-              (not (window-minibuffer-p adob--last-window)))
-         (set-window-parameter adob--last-window 'adob--dim t)
-         (force-window-update adob--last-window)
-         (setq adob--last-buffer nil
-               adob--last-window nil))
-        ((not (or adob--adow-mode
-                  (adob--never-dim-p adob--last-buffer)))
-         (save-current-buffer (adob--dim-buffer adob--last-buffer))
-         (setq adob--last-buffer nil))))
+        (adob--adow-mode
+         (when (and (window-live-p adob--last-window)
+                    (not (window-minibuffer-p adob--last-window)))
+           (set-window-parameter adob--last-window 'adob--dim t)
+           (force-window-update adob--last-window)
+           (setq adob--last-buffer nil
+                 adob--last-window nil)))
+         ((not (adob--never-dim-p adob--last-buffer))
+          (save-current-buffer (adob--dim-buffer adob--last-buffer))
+          (setq adob--last-buffer nil
+                adob--last-window nil))))
 
 (defun adob--focus-change-hook ()
   "Based on focus status of selected frame dim or undim selected buffer.
@@ -295,8 +311,8 @@ behaviour is where the mode gets its name from."
         ;; running in adow mode, don’t dim hidden buffers either (most notably
         ;; we care about Minibuffer and Echo Area buffers).
         (progn
-          (setq adob--last-buffer (window-buffer)
-                adob--last-window (if adob--adow-mode (selected-window)))
+          (setq adob--last-window (selected-window)
+                adob--last-buffer (window-buffer adob--last-window))
           (dolist (buffer (buffer-list))
             (when (or adob--adow-mode
                       (not (or (eq buffer adob--last-buffer)
