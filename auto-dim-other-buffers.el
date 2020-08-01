@@ -2,7 +2,7 @@
 ;; Author: Michal Nazarewicz <mina86@mina86.com>
 ;; Maintainer: Michal Nazarewicz <mina86@mina86.com>
 ;; URL: https://github.com/mina86/auto-dim-other-buffers.el
-;; Version: 2.0.2
+;; Version: 2.0.3
 
 ;; This file is not part of GNU Emacs.
 
@@ -193,7 +193,8 @@ Dim previously selected window if selection has changed."
              (let ((old-buf (window-buffer adob--last-window)))
                (unless (or (eq old-buf buf)
                            (eq old-buf adob--last-buffer))
-                 (adob--dim-buffer old-buf)
+                 (save-current-buffer
+                   (adob--dim-buffer old-buf))
                  (force-window-update adob--last-window))))
         (setq adob--last-window wnd)))
 
@@ -244,7 +245,8 @@ Otherwise, if a new buffer is displayed somewhere, dim it."
       ;; A new buffer is displayed somewhere but it’s not the selected one so
       ;; dim it.
       (unless (adob--never-dim-p current)
-        (adob--dim-buffer current)))))
+        (save-current-buffer
+          (adob--dim-buffer current))))))
 
 (defun adob--focus-out-hook ()
   "Dim all buffers if `auto-dim-other-buffers-dim-on-focus-out'."
