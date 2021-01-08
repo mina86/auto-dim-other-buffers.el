@@ -268,16 +268,53 @@ Otherwise, if a new buffer is displayed somewhere, dim it."
           (setq adob--last-buffer nil
                 adob--last-window nil))))
 
+(defvar adob--focus-change-debounce-delay 0.015
+  "Delay in seconds to use when debouncing focus change events.
+Window manager may send spurious focus change events.  To filter
+them, the code delays handling of focus-change events by this
+number of seconds.  Based on rudimentary testing, 0.015 (i.e. 15
+milliseconds) is a good compromise between performing the
+filtering and introducing a visible delay.
+
+Setting this variable to zero will disable the debouncing.")
+
+(defvar adob--focus-change-timer nil
+  "Timer used to debounce focus change events.
+Timer used by ‘adob--focus-change-hook’ when debouncing focus
+change events.  The actual delay is specified by the
+`adob--focus-change-debounce-delay` variable.")
+
+(defvar adob--focus-change-last-state 'force-update
+  "Last ‘frame-focus-state’ when handling focus change event.
+Window manager may send spurious focus change events.  The code
+attempts to debounce them but this may result in getting a change
+event even if the focus state hasn’t changed.  This variable
+stores the last state we’ve seen so that we can skip doing any
+work if it hasn’t changed.")
+
+(defun adob--focus-change ()
+    ;; Reset the timer variable so `adob--focus-change-hook’ will schedule us
+    ;; again.
+  (setq adob--focus-change-timer nil)
+  ;; ‘after-focus-change-function’ has been added at the same time as
+  ;; ‘frame-focus-state’ function so if we’re here we know that function is
+  ;; defined.
+  (let ((state (with-no-warnings (frame-focus-state))))
+    (unless (eq adob--focus-change-last-state state)
+      (setq adob--focus-change-last-state state)
+      (if state (adob--update)
+        (adob--focus-out-hook)))))
+
 (defun adob--focus-change-hook ()
   "Based on focus status of selected frame dim or undim selected buffer.
 Do nothing if `auto-dim-other-buffers-dim-on-focus-out' is nil
 and frame’s doesn’t have focus."
-  ;; ‘after-focus-change-function’ has been added at the same time as
-  ;; ‘frame-focus-state’ function so if we’re here we know that function is
-  ;; defined.
-  (if (with-no-warnings (frame-focus-state))
-      (adob--update)
-    (adob--focus-out-hook)))
+  (if (<= adob--focus-change-debounce-delay 0)
+      (adob--focus-change)
+    (unless adob--focus-change-timer
+      (setq adob--focus-change-timer
+            (run-with-timer adob--focus-change-debounce-delay nil
+                            #'adob--focus-change)))))
 
 ;;;###autoload
 (define-minor-mode auto-dim-other-buffers-mode
@@ -310,6 +347,13 @@ behaviour is where the mode gets its name from."
                            #'adob--focus-change-hook))
       (funcall callback 'focus-out-hook #'adob--focus-out-hook)
       (funcall callback 'focus-in-hook #'adob--update)))
+
+  ;; Kill focus change timer if present.  If we’re enabling the mode we want to
+  ;; start from fresh state.  If we’re disabling the mode, we don’t want the
+  ;; timer anyway.
+  (when adob--focus-change-timer
+    (cancel-timer adob--focus-change-timer)
+    (setq adob--focus-change-timer nil))
 
   (save-current-buffer
     (if auto-dim-other-buffers-mode
