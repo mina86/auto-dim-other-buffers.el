@@ -64,6 +64,10 @@
 (require 'face-remap)
 
 
+(defgroup auto-dim-other-buffers nil
+  "Visually makes windows without focus less prominent."
+  :group 'convenience)
+
 (defface auto-dim-other-buffers-face
   '((((background light)) :background "#eff") (t :background "#122"))
   "Face (presumably dimmed somehow) for non-selected window."
@@ -294,6 +298,7 @@ a buffer was displayed in multiple windows, none of them would be
 dimmed even though at most one could have focus.  This historic
 behaviour is where the mode gets its name from."
   :global t
+  :group 'auto-dim-other-buffers
   ;; Add/remove all hooks
   (let ((callback (if auto-dim-other-buffers-mode #'add-hook #'remove-hook)))
     (funcall callback 'window-configuration-change-hook #'adob--rescan-windows)
