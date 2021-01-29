@@ -192,7 +192,7 @@ Dim previously selected window if selection has changed."
        (t
         ;; Window has changed but adow-mode is not active.  Make sure buffer
         ;; displayed in the old window is dimmed.  This is necessary because
-        ;; a command (e.g. ‘quite-window’) could change to a different window
+        ;; a command (e.g. ‘quit-window’) could change to a different window
         ;; while at the same time changing buffer in the old window.  In this
         ;; scenario, we’re never dimming the buffer in the old window.
         (and (window-live-p adob--last-window)
@@ -205,7 +205,7 @@ Dim previously selected window if selection has changed."
                  (force-window-update adob--last-window))))
         (setq adob--last-window wnd)))
 
-      ;; If buffer has changed, update their status.
+      ;; If buffer has changed, update its status.
       (unless (eq buf adob--last-buffer)
         (save-current-buffer
           (when (buffer-live-p adob--last-buffer)
@@ -218,13 +218,10 @@ Dim previously selected window if selection has changed."
 (defun adob--rescan-windows ()
   "Rescan all windows in selected frame and dim all non-selected windows."
   (let* ((selected-window (selected-window))
-         (selected-buffer (window-buffer selected-window))
-         (windows (window-list nil 'n)))
+         (selected-buffer (window-buffer selected-window)))
     (save-current-buffer
-      (while windows
-        (let* ((wnd (car windows))
-               (buf (window-buffer wnd)))
-          (setq windows (cdr windows))
+      (dolist (wnd (window-list nil 'n))
+        (let ((buf (window-buffer wnd)))
           (cond (adob--adow-mode
                  ;; Update window’s ‘adob--dim’ parameter.  If it changes set
                  ;; we’ll also later tell Emacs to redisplay the window.
