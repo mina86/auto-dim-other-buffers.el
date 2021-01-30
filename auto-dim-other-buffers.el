@@ -61,6 +61,9 @@
 
 ;;; Code:
 
+(require 'face-remap)
+
+
 (defface auto-dim-other-buffers-face
   '((((background light)) :background "#eff") (t :background "#122"))
   "Face (presumably dimmed somehow) for non-selected window."
