@@ -2,7 +2,7 @@
 ;; Author: Michal Nazarewicz <mina86@mina86.com>
 ;; Maintainer: Michal Nazarewicz <mina86@mina86.com>
 ;; URL: https://github.com/mina86/auto-dim-other-buffers.el
-;; Version: 2.0.3
+;; Version: 2.0.4
 
 ;; This file is not part of GNU Emacs.
 
@@ -106,59 +106,59 @@ will or will not use it.  See ‘adob--adow-mode’.")
 
 (defun adob--never-dim-p (buffer)
   "Return whether to never dim BUFFER.
-Currently, no hidden buffers (ones whose name starts with a space) are dimmed.
-This is only used outside of adow-mode (i.e. if not ‘adob--adow-mode’)."
-  (eq t (compare-strings " " 0 1 (buffer-name buffer) 0 1)))
+Call ‘auto-dim-other-buffers-never-dim-buffer-functions’ to see
+if any of them return non-nil in which case the BUFFER won’t
+dimmed.  In addition to that, outside of adow-mode (see
+‘adob--adow-mode’), no hidden buffers will be dimmed."
+  (or (and (not adob--adow-mode) (eq ?\s (aref (buffer-name buffer) 0)))
+      (run-hook-with-args-until-success
+       'auto-dim-other-buffers-never-dim-buffer-functions buffer)))
 
 (defvar-local adob--face-mode-remapping nil
   "Current face remapping cookie for `auto-dim-other-buffers-mode'.")
 
 (defun adob--remap-face (buffer object)
-  "Make sure face remapping is active in BUFFER.
+  "Make sure face remapping is active in BUFFER unless its never-dim.
 
-Does not preserve current buffer and changes it to BUFFER if new
-remapping had to be added.
+Does not preserve current buffer.
 
-If face remapping had to be added, force update of OBJECT which
-can be a window (which forces update of only that window) or
-a buffer (which forces update of all windows displaying that
-buffer).  To keep track of the face remapping, update
-‘adob--face-mode-remapping’.
+If BUFFER is never-dim (as determined by ‘adob--never-dim-p’),
+remove adob face remapping (if present) from BUFFER.  Otherwise,
+make sure the remapping is active by adding it if it’s missing.
 
-Return non-nil if new remapping has been added; nil if it was
-already active in current buffer."
-  (unless (buffer-local-value 'adob--face-mode-remapping buffer)
-    (set-buffer buffer)
-    (force-window-update object)
-    (setq adob--face-mode-remapping
-          (face-remap-add-relative 'default adob--remap-face))))
+If face remapping had to be changed, force update of OBJECT,
+which can be a window or a buffer.
+
+Return non-nil if remapping has been added to BUFFER."
+  (let ((wants (not (adob--never-dim-p buffer)))
+        (has (buffer-local-value 'adob--face-mode-remapping buffer)))
+    (when (eq wants (not has))
+      (set-buffer buffer)
+      (setq adob--face-mode-remapping
+            (if wants
+                (face-remap-add-relative 'default adob--remap-face)
+              (face-remap-remove-relative adob--face-mode-remapping)
+              nil))
+      (force-window-update object)
+      wants)))
 
 (defun adob--unmap-face (buffer object)
   "Make sure face remapping is inactive in BUFFER.
 
-Does not preserve current buffer and changes it to BUFFER if new
-remapping had to be added.
+Does not preserve current buffer.
 
-If face remapping had to be removed, force update of OBJECT which
-can be a window (which forces update of only that window) or
-a buffer (which forces update of all windows displaying that
-buffer).  To keep track of the face remapping, update
-‘adob--face-mode-remapping’.
-
-Return t if remapping has been removed; nil if it was not active
-in current buffer."
+If face remapping had to be changed, force update of OBJECT which
+can be a window or a buffer."
   (when (buffer-local-value 'adob--face-mode-remapping buffer)
     (set-buffer buffer)
     (face-remap-remove-relative adob--face-mode-remapping)
     (setq adob--face-mode-remapping nil)
-    (force-window-update object)
-    t))
+    (force-window-update object)))
 
 (defun adob--dim-buffer (buffer &optional except-in)
   "Dim BUFFER if not already dimmed except in EXCEPT-IN window.
 
-Does not preserve current buffer and changes it to BUFFER if new
-remapping had to be added.
+Does not preserve current buffer.
 
 EXCEPT-IN only works if the code is running in adow mode (see
 ‘adob--adow-mode’) and it works by deactivating the dimmed face
@@ -235,8 +235,7 @@ Dim previously selected window if selection has changed."
                 ;; on whether current buffer selected buffer or not.
                 ((eq buf selected-buffer)
                  (adob--unmap-face buf wnd))
-                ((adob--never-dim-p buf)
-                 (adob--remap-face buf wnd))))))))
+                ((adob--remap-face buf wnd))))))))
 
 (defun adob--buffer-list-update-hook ()
   "React to buffer list changes.
@@ -248,25 +247,21 @@ Otherwise, if a new buffer is displayed somewhere, dim it."
         (adob--update)
       ;; A new buffer is displayed somewhere but it’s not the selected one so
       ;; dim it.
-      (unless (adob--never-dim-p current)
-        (save-current-buffer
-          (adob--dim-buffer current))))))
+      (adob--dim-buffer current))))
 
 (defun adob--focus-out-hook ()
   "Dim all buffers if `auto-dim-other-buffers-dim-on-focus-out'."
-  (cond ((not (and auto-dim-other-buffers-dim-on-focus-out
-                   (buffer-live-p adob--last-buffer))))
-        (adob--adow-mode
-         (when (and (window-live-p adob--last-window)
-                    (not (window-minibuffer-p adob--last-window)))
-           (set-window-parameter adob--last-window 'adob--dim t)
-           (force-window-update adob--last-window)
-           (setq adob--last-buffer nil
-                 adob--last-window nil)))
-         ((not (adob--never-dim-p adob--last-buffer))
-          (save-current-buffer (adob--dim-buffer adob--last-buffer))
-          (setq adob--last-buffer nil
-                adob--last-window nil))))
+  (when (and auto-dim-other-buffers-dim-on-focus-out
+             (buffer-live-p adob--last-buffer))
+    (if adob--adow-mode
+        (when (and (window-live-p adob--last-window)
+                   (not (window-minibuffer-p adob--last-window)))
+          (set-window-parameter adob--last-window 'adob--dim t)
+          (force-window-update adob--last-window))
+      (save-current-buffer
+        (adob--dim-buffer adob--last-buffer)))
+    (setq adob--last-buffer nil
+          adob--last-window nil)))
 
 (defvar adob--focus-change-debounce-delay 0.015
   "Delay in seconds to use when debouncing focus change events.
@@ -316,6 +311,18 @@ and frame’s doesn’t have focus."
             (run-with-timer adob--focus-change-debounce-delay nil
                             #'adob--focus-change)))))
 
+(defun adob--initialize ()
+  "Dim all except for the selected buffer."
+  ;; In adow mode, dim current buffer as well except for in selected window.  If
+  ;; not running in adow mode, don’t dim hidden buffers either (most notably we
+  ;; care about Minibuffer and Echo Area buffers).
+  (setq adob--last-window (selected-window)
+        adob--last-buffer (window-buffer adob--last-window))
+  (dolist (buffer (buffer-list))
+    (when (or adob--adow-mode
+              (not (eq buffer adob--last-buffer)))
+      (adob--dim-buffer buffer adob--last-window))))
+
 ;;;###autoload
 (define-minor-mode auto-dim-other-buffers-mode
   "Visually makes windows without focus less prominent.
@@ -357,18 +364,8 @@ behaviour is where the mode gets its name from."
 
   (save-current-buffer
     (if auto-dim-other-buffers-mode
-        ;; Dim all except for the current buffer.  When running in adow mode,
-        ;; dim current buffer as well except for in selected window.  If not
-        ;; running in adow mode, don’t dim hidden buffers either (most notably
-        ;; we care about Minibuffer and Echo Area buffers).
-        (progn
-          (setq adob--last-window (selected-window)
-                adob--last-buffer (window-buffer adob--last-window))
-          (dolist (buffer (buffer-list))
-            (when (or adob--adow-mode
-                      (not (or (eq buffer adob--last-buffer)
-                               (adob--never-dim-p buffer))))
-              (adob--dim-buffer buffer adob--last-window))))
+        ;; Dim all except for selected buffer.
+        (adob--initialize)
 
       ;; Clean up by removing all face remaps.
       (setq adob--last-buffer nil
@@ -381,6 +378,33 @@ behaviour is where the mode gets its name from."
           (set-buffer buffer)
           (adob--unmap-face buffer buffer)
           (kill-local-variable 'adob--face-mode-remapping))))))
+
+
+(defcustom auto-dim-other-buffers-never-dim-buffer-functions nil
+  "A list of functions run to determine if a buffer should stay lit.
+Each function is called with buffer as its sole argument.  If any
+of them returns non-nil, the buffer will not be dimmed even if
+it’s not selected one.
+
+Each hook function should return the same value for the lifespan
+of a buffer.  Otherwise, display state of a buffers may be
+inconsistent with the determination of a hook function and remain
+stale until the buffer is selected.  Tests based on buffer name
+will work well, but tests based on major mode, buffer file name
+or other properties which may change during lifespan of a buffer
+may be problematic.
+
+Changing this variable outside of customize does not immediately
+update display state of all affected buffers."
+  :type 'hook
+  :group 'auto-dim-other-buffers
+  :set (lambda (symbol value)
+         (set-default symbol value)
+         (when auto-dim-other-buffers-mode
+           (save-current-buffer
+             (adob--initialize)))
+         value))
+
 
 (provide 'auto-dim-other-buffers)
 
