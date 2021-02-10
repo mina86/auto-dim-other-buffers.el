@@ -2,7 +2,7 @@
 ;; Author: Michal Nazarewicz <mina86@mina86.com>
 ;; Maintainer: Michal Nazarewicz <mina86@mina86.com>
 ;; URL: https://github.com/mina86/auto-dim-other-buffers.el
-;; Version: 2.0.4
+;; Version: 2.0.5
 
 ;; This file is not part of GNU Emacs.
 
@@ -116,6 +116,7 @@ dimmed.  In addition to that, outside of adow-mode (see
 
 (defvar-local adob--face-mode-remapping nil
   "Current face remapping cookie for `auto-dim-other-buffers-mode'.")
+(put 'adob--face-mode-remapping 'permanent-local nil)
 
 (defun adob--remap-face (buffer object)
   "Make sure face remapping is active in BUFFER unless its never-dim.
@@ -141,6 +142,17 @@ Return non-nil if remapping has been added to BUFFER."
               nil))
       (force-window-update object)
       wants)))
+
+(defun adob--kill-all-local-variables-advice (kill)
+  "Restores face remapping after killing all local variables.
+This is intended as an advice around ‘kill-all-local-variables’
+function which removes all buffer face remapping which is
+something we don’t want."
+  (unless (prog1 (not adob--face-mode-remapping)
+          (funcall kill))
+    (setq adob--face-mode-remapping
+          (face-remap-add-relative 'default adob--remap-face))
+    nil))
 
 (defun adob--unmap-face (buffer object)
   "Make sure face remapping is inactive in BUFFER.
@@ -364,9 +376,14 @@ behaviour is where the mode gets its name from."
 
   (save-current-buffer
     (if auto-dim-other-buffers-mode
-        ;; Dim all except for selected buffer.
-        (adob--initialize)
+        (progn
+          (advice-add #'kill-all-local-variables :around
+                      #'adob--kill-all-local-variables-advice)
+          ;; Dim all except for selected buffer.
+          (adob--initialize))
 
+      (advice-remove #'kill-all-local-variables
+                     #'adob--kill-all-local-variables-advice)
       ;; Clean up by removing all face remaps.
       (setq adob--last-buffer nil
             adob--last-window nil)
