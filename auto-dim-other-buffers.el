@@ -70,8 +70,15 @@
 
 (defface auto-dim-other-buffers-face
   '((((background light)) :background "#eff") (t :background "#122"))
-  "Face (presumably dimmed somehow) for non-selected window."
+  "Face with a (presumably) dimmed background for non-selected window.
+
+By default the face is applied to, among others, the ‘default’
+face and is intended to affect the background of the non-selected
+windows.  Which faces are actually modified is configured by the
+‘auto-dim-other-buffers-affected-faces’ variable."
   :group 'auto-dim-other-buffers)
+
+(defvar auto-dim-other-buffers-affected-faces) ; Forward declaration.
 
 (defcustom auto-dim-other-buffers-dim-on-focus-out t
   "Whether to dim all windows when frame looses focus."
@@ -91,14 +98,6 @@ If t, the code will run in ‘auto dim other window’ mode (hence
 operate on windows, Emacs must support :filtered face predicate
 which has been added in Emacs 27.")
 
-(defconst adob--remap-face
-  (if adob--adow-mode
-      '(:filtered (:window adob--dim t) auto-dim-other-buffers-face)
-    'auto-dim-other-buffers-face)
-  "Face to use when adding relative face remapping.
-Depending on whether Emacs supports :filtered predicate, this
-will or will not use it.  See ‘adob--adow-mode’.")
-
 (defvar adob--last-buffer nil
   "Last selected buffer, i.e. buffer which is currently not dimmed.")
 (defvar adob--last-window nil
@@ -114,32 +113,76 @@ dimmed.  In addition to that, outside of adow-mode (see
       (run-hook-with-args-until-success
        'auto-dim-other-buffers-never-dim-buffer-functions buffer)))
 
+
 (defvar-local adob--face-mode-remapping nil
   "Current face remapping cookie for `auto-dim-other-buffers-mode'.")
 (put 'adob--face-mode-remapping 'permanent-local nil)
 
-(defun adob--remap-face (buffer object)
-  "Make sure face remapping is active in BUFFER unless its never-dim.
+(defun adob--remap-add-relative ()
+  "Adds all necessary relative face mappings.
+Updates ‘adob--face-mode-remapping’ variable accordingly."
+  (let ((make-face (if adob--adow-mode
+                       (lambda (face) `(:filtered (:window adob--dim t) ,face))
+                     #'identity)))
+    (setq adob--face-mode-remapping
+          (mapcar (lambda (spec)
+                    (face-remap-add-relative (car spec)
+                                             (funcall make-face (cdr spec))))
+                  auto-dim-other-buffers-affected-faces))))
+
+(defun adob--remap-remove-relative ()
+  "Remove all relative mappings that we’ve added.
+List of existing mappings is taken from ‘adob--face-mode-remapping’
+variable which is set to nil afterwards."
+  (mapc #'face-remap-remove-relative adob--face-mode-remapping)
+  (setq adob--face-mode-remapping nil))
+
+(defun adob--remap-cycle-all ()
+  "Removes and re-adds face remappings in all buffers when they exist.
+If ‘auto-dim-other-buffers-mode’ is enabled, this function needs
+to be called after ‘auto-dim-other-buffers-affected-faces’
+variable is changed to update state of all affected buffers.
+Note that it is called automatically as necessary when setting
+than variable via Customise."
+  (save-current-buffer
+    (mapc (lambda (buffer)
+            ;; It’s tempting to read the value of the variable and not bother
+            ;; with the buffer if the value is nil since in that case the
+            ;; buffer is presumably never-dim and thus we won’t remap any
+            ;; faces in it.  There is one corner case when this is not true
+            ;; however.  If at one point user set list of faces to affect to
+            ;; nil the list of remapping will be nil as well and when user
+            ;; changes the variable we’ll need to add remappings.
+            (when (local-variable-p 'adob--face-mode-remapping buffer)
+              (set-buffer buffer)
+              (let ((had-none (not adob--face-mode-remapping)))
+                (adob--remap-remove-relative)
+                (unless (adob--never-dim-p buffer)
+                  (adob--remap-add-relative))
+                (unless (eq had-none (not adob--face-mode-remapping))
+                  (force-window-update buffer)))))
+          (buffer-list))))
+
+(defun adob--remap-faces (buffer object)
+  "Make sure face remappings are active in BUFFER unless its never-dim.
 
 Does not preserve current buffer.
 
 If BUFFER is never-dim (as determined by ‘adob--never-dim-p’),
-remove adob face remapping (if present) from BUFFER.  Otherwise,
-make sure the remapping is active by adding it if it’s missing.
+remove adob face remappings from it.  Otherwise, make sure the
+remappings are active by adding them if it’s missing.
 
 If face remapping had to be changed, force update of OBJECT,
 which can be a window or a buffer.
 
-Return non-nil if remapping has been added to BUFFER."
+Return non-nil if remappings have been added to BUFFER."
   (let ((wants (not (adob--never-dim-p buffer)))
         (has (buffer-local-value 'adob--face-mode-remapping buffer)))
     (when (eq wants (not has))
       (set-buffer buffer)
-      (setq adob--face-mode-remapping
-            (if wants
-                (face-remap-add-relative 'default adob--remap-face)
-              (face-remap-remove-relative adob--face-mode-remapping)
-              nil))
+      (if wants
+          (adob--remap-add-relative)
+        (adob--remap-remove-relative))
       (force-window-update object)
       wants)))
 
@@ -148,10 +191,8 @@ Return non-nil if remapping has been added to BUFFER."
 This is intended as an advice around ‘kill-all-local-variables’
 function which removes all buffer face remapping which is
 something we don’t want."
-  (unless (prog1 (not adob--face-mode-remapping)
-          (funcall kill))
-    (setq adob--face-mode-remapping
-          (face-remap-add-relative 'default adob--remap-face))
+  (when (prog1 adob--face-mode-remapping (funcall kill))
+    (adob--remap-add-relative)
     nil))
 
 (defun adob--unmap-face (buffer object)
@@ -163,8 +204,7 @@ If face remapping had to be changed, force update of OBJECT which
 can be a window or a buffer."
   (when (buffer-local-value 'adob--face-mode-remapping buffer)
     (set-buffer buffer)
-    (face-remap-remove-relative adob--face-mode-remapping)
-    (setq adob--face-mode-remapping nil)
+    (adob--remap-remove-relative)
     (force-window-update object)))
 
 (defun adob--dim-buffer (buffer &optional except-in)
@@ -175,7 +215,7 @@ Does not preserve current buffer.
 EXCEPT-IN only works if the code is running in adow mode (see
 ‘adob--adow-mode’) and it works by deactivating the dimmed face
 in specified window."
-  (when (adob--remap-face buffer buffer)
+  (when (adob--remap-faces buffer buffer)
     (dolist (wnd (and adob--adow-mode
                       (get-buffer-window-list buffer 'n 'visible)))
       (set-window-parameter wnd 'adob--dim (not (eq wnd except-in))))))
@@ -224,7 +264,7 @@ Dim previously selected window if selection has changed."
             (adob--dim-buffer adob--last-buffer wnd))
           (setq adob--last-buffer buf)
           (if adob--adow-mode
-              (adob--remap-face buf buf)
+              (adob--remap-faces buf buf)
             (adob--unmap-face buf buf)))))))
 
 (defun adob--rescan-windows ()
@@ -242,12 +282,12 @@ Dim previously selected window if selection has changed."
                      (set-window-parameter wnd 'adob--dim new)
                      (force-window-update wnd)))
                  ;; In adow-mode, make sure that the buffer has remapped faces.
-                 (adob--remap-face buf wnd))
+                 (adob--remap-faces buf wnd))
                 ;; Outside of adow-mode, add or remove face remapping depending
                 ;; on whether current buffer selected buffer or not.
                 ((eq buf selected-buffer)
                  (adob--unmap-face buf wnd))
-                ((adob--remap-face buf wnd))))))))
+                ((adob--remap-faces buf wnd))))))))
 
 (defun adob--buffer-list-update-hook ()
   "React to buffer list changes.
@@ -340,10 +380,10 @@ and frame’s doesn’t have focus."
   "Visually makes windows without focus less prominent.
 
 Windows without input focus are made to look less prominent by
-applying ‘auto-dim-other-buffers-face’ to them.  With many
-windows in a frame, the idea is that this mode helps recognise
-which is the selected window by providing a non-intrusive but
-still noticeable visual indicator.
+applying ‘auto-dim-other-buffers-face’ to them.  With many windows
+in a frame, the idea is that this mode helps recognise which is
+the selected window by providing a non-intrusive but still
+noticeable visual indicator.
 
 Note that despite it’s name, since Emacs 27 this mode operates
 on *windows* rather than buffers.  In older versions of Emacs, if
@@ -421,6 +461,27 @@ update display state of all affected buffers."
            (save-current-buffer
              (adob--initialize)))
          value))
+
+(defcustom auto-dim-other-buffers-affected-faces
+  '((default   . auto-dim-other-buffers-face)
+    (org-block . auto-dim-other-buffers-face))
+  "A list of faces affected when dimming a window.
+
+The list consists of (FACE . REMAP-FACE) pairs where FACE is an
+existing face which should be affected when dimming a window and
+REMAP-FACE is remapping which should be added to it.
+
+Typically, REMAP-FACE is ‘auto-dim-other-buffers-face’.  It is
+used when the background of a FACE needs to be dimmed.
+
+Changing this variable outside of customize does not update
+display state of affected buffers."
+  :type '(list (cons face face))
+  :group 'auto-dim-other-buffers
+  :set (lambda (symbol value)
+         (set-default symbol value)
+         (when auto-dim-other-buffers-mode
+           (adob--remap-cycle-all))))
 
 
 (provide 'auto-dim-other-buffers)
