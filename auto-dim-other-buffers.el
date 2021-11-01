@@ -2,7 +2,7 @@
 ;; Author: Michal Nazarewicz <mina86@mina86.com>
 ;; Maintainer: Michal Nazarewicz <mina86@mina86.com>
 ;; URL: https://github.com/mina86/auto-dim-other-buffers.el
-;; Version: 2.0.5
+;; Version: 2.1.0
 
 ;; This file is not part of GNU Emacs.
 
@@ -42,13 +42,10 @@
 ;;       (when (fboundp 'auto-dim-other-buffers-mode)
 ;;         (auto-dim-other-buffers-mode t))))
 
-;; To configure how dimmed buffers look like, customise
-;; `auto-dim-other-buffers-face'.  This can be accomplished by:
-;;
-;;     M-x customize-face RET auto-dim-other-buffers-face RET
-
-;; More customisation can be found in ‘auto-dim-other-buffers’ customisation
-;; group which can be accessed with:
+;; To configure how dimmed buffers look like, change
+;; `auto-dim-other-buffers-face' and `auto-dim-other-buffers-hide-face' faces.
+;; Those faces as well as other settings can be found in
+;; ‘auto-dim-other-buffers’ group which can be accessed with:
 ;;
 ;;     M-x customize-group RET auto-dim-other-buffers RET
 
@@ -74,7 +71,28 @@
 
 By default the face is applied to, among others, the ‘default’
 face and is intended to affect the background of the non-selected
-windows.  Which faces are actually modified is configured by the
+windows.  A related ‘auto-dim-other-buffers-hide-face’ face is
+intended for faces which need their foreground to be changed in
+sync.  Which faces are actually modified is configured by the
+‘auto-dim-other-buffers-affected-faces’ variable."
+  :group 'auto-dim-other-buffers)
+
+(defface auto-dim-other-buffers-hide-face
+  '((((background light)) :foreground "#eff" :background "#eff")
+    (t                    :foreground "#122" :background "#122"))
+  "Face with a (presumably) dimmed background and matching foreground.
+
+The intention is that the face has the same foreground and
+background as the background of ‘auto-dim-other-buffers-face’ and
+that it’s used as remapping for faces which hide the text by
+rendering it in the same colour as background.
+
+By default it is applied to the ‘org-hide’ face and is intended
+to modify foreground of faces which hide the text by rendering it
+in the same colour as the background.  Since the mode alters the
+background in a window such faces need to be updated as well.
+
+Which faces are actually modified is configured by the
 ‘auto-dim-other-buffers-affected-faces’ variable."
   :group 'auto-dim-other-buffers)
 
@@ -464,15 +482,23 @@ update display state of all affected buffers."
 
 (defcustom auto-dim-other-buffers-affected-faces
   '((default   . auto-dim-other-buffers-face)
-    (org-block . auto-dim-other-buffers-face))
+    (org-block . auto-dim-other-buffers-face)
+    (org-hide  . auto-dim-other-buffers-hide-face))
   "A list of faces affected when dimming a window.
 
 The list consists of (FACE . REMAP-FACE) pairs where FACE is an
 existing face which should be affected when dimming a window and
 REMAP-FACE is remapping which should be added to it.
 
-Typically, REMAP-FACE is ‘auto-dim-other-buffers-face’.  It is
-used when the background of a FACE needs to be dimmed.
+Typically, REMAP-FACE is either ‘auto-dim-other-buffers-face’ or
+‘auto-dim-other-buffers-hide-face’.  The former is used when the
+background of the face needs to be dimmed while the latter when
+in addition the foreground needs to be set to match the
+background.  For example, ‘default’ face is altered by overriding
+it with the former which causes background of the window to be
+changed.  On the other hand, ‘org-hide’ (which hides text by
+rendering it in the same colour as the background) is changed by
+the latter so that the hidden text stays hidden.
 
 Changing this variable outside of customize does not update
 display state of affected buffers."
