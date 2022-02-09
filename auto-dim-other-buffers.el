@@ -2,7 +2,7 @@
 ;; Author: Michal Nazarewicz <mina86@mina86.com>
 ;; Maintainer: Michal Nazarewicz <mina86@mina86.com>
 ;; URL: https://github.com/mina86/auto-dim-other-buffers.el
-;; Version: 2.1.0
+;; Version: 2.1.1
 
 ;; This file is not part of GNU Emacs.
 
@@ -204,12 +204,12 @@ Return non-nil if remappings have been added to BUFFER."
       (force-window-update object)
       wants)))
 
-(defun adob--kill-all-local-variables-advice (kill)
+(defun adob--kill-all-local-variables-advice (kill &rest args)
   "Restores face remapping after killing all local variables.
 This is intended as an advice around ‘kill-all-local-variables’
 function which removes all buffer face remapping which is
 something we don’t want."
-  (when (prog1 adob--face-mode-remapping (funcall kill))
+  (when (prog1 adob--face-mode-remapping (apply kill args))
     (adob--remap-add-relative)
     nil))
 
