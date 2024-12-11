@@ -5,9 +5,8 @@
 
 The `auto-dim-other-buffers-mode` is a global minor mode which makes
 windows without focus less prominent.  With many windows in a frame,
-the idea is that this mode helps recognise which is the selected
-window by providing a non-intrusive but still noticeable visual
-indicator.
+this mode helps recognise which is the selected window by providing
+a non-intrusive but still noticeable visual indicator.
 
 [![Demo](screenshot.gif)](https://www.youtube.com/watch?v=2djOHSWhyD4)
 
@@ -21,7 +20,8 @@ Once installed, enable the mode with:
     M-x auto-dim-other-buffers-mode RET
 
 To make it enabled every time Emacs starts, add the following to Emacs
-initialisation file (typically `~/.emacs` or `~/.emacs.d/init.el`):
+initialisation file (typically `~/.emacs`, `~/.emacs.d/init.el` or
+`~/.config/emacs/init.el`):
 
     (add-hook 'after-init-hook (lambda ()
       (when (fboundp 'auto-dim-other-buffers-mode)
@@ -37,6 +37,9 @@ group which can be accessed with:
 
     M-x customize-group RET auto-dim-other-buffers RET
 
-Note that despite it’s name, since Emacs 27 the mode operates on
-*windows* rather than buffers.  I.e. selected window is highlighted
-and all other windows are dimmed even if they display the same buffer.
+Note that despite it, the mode operates on *windows* rather than
+buffers.  In other words, selected window is highlighted and all other
+windows are dimmed even if they display the same buffer.  The package
+is named `auto-dim-other-buffer` for historical reasons.
+
+Requires Emacs 27 to work.

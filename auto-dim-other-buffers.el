@@ -2,6 +2,7 @@
 ;; Author: Michal Nazarewicz <mina86@mina86.com>
 ;; URL: https://github.com/mina86/auto-dim-other-buffers.el
 ;; Version: 2.1.1
+;; Package-Requires: ((emacs "27.1"))
 ;; Keywords: faces
 
 ;; This file is not part of GNU Emacs.
@@ -22,9 +23,9 @@
 ;;; Commentary:
 
 ;; The ‘auto-dim-other-buffers-mode’ is a global minor mode which makes windows
-;; without focus less prominent.  With many windows in a frame, the idea is that
-;; this mode helps recognise which is the selected window by providing
-;; a non-intrusive but still noticeable visual indicator.
+;; without focus less prominent.  With many windows in a frame, this mode helps
+;; recognise which is the selected window by providing a non-intrusive but still
+;; noticeable visual indicator.
 
 ;; The preferred way to install the mode is by grabbing ‘auto-dim-other-buffers’
 ;; package form MELPA:
@@ -35,8 +36,8 @@
 ;;
 ;;     M-x auto-dim-other-buffers-mode RET
 
-;; To make the mode enabled every time Emacs starts, add the following
-;; to Emacs initialisation file (~/.emacs or ~/.emacs.d/init.el):
+;; To make the mode enabled every time Emacs starts, add the following to Emacs
+;; initialisation file (see `user-init-file'):
 ;;
 ;;     (add-hook 'after-init-hook (lambda ()
 ;;       (when (fboundp 'auto-dim-other-buffers-mode)
@@ -49,12 +50,10 @@
 ;;
 ;;     M-x customize-group RET auto-dim-other-buffers RET
 
-;; Note that despite it’s name, since Emacs 27 the mode operates on *windows*
-;; rather than buffers.  I.e. selected window is highlighted and all other
-;; windows are dimmed even if they display the same buffer.  In older Emacs
-;; versions the mode falls back to the old behaviour where all windows
-;; displaying selected buffer are highlighted.  This historic behaviour
-;; is where the mode gets its name from.
+;; Note that despite it, the mode operates on *windows* rather than buffers.  In
+;; other words, selected window is highlighted and all other windows are dimmed
+;; even if they display the same buffer.  The package is named
+;; `auto-dim-other-buffer' for historical reasons.
 
 ;;; Code:
 
@@ -109,13 +108,6 @@ Which faces are actually modified is configured by the
   :group 'auto-dim-other-buffers)
 
 
-(defconst adob--adow-mode (not (version< emacs-version "27.0.90"))
-  "Whether Emacs supports :filtered faces.
-If t, the code will run in ‘auto dim other window’ mode (hence
-‘adow-mode’) which operates on windows rather than buffers.  To
-operate on windows, Emacs must support :filtered face predicate
-which has been added in Emacs 27.")
-
 (defvar adob--last-buffer nil
   "Last selected buffer, i.e. buffer which is currently not dimmed.")
 (defvar adob--last-window nil
@@ -124,12 +116,10 @@ which has been added in Emacs 27.")
 (defun adob--never-dim-p (buffer)
   "Return whether to never dim BUFFER.
 Call ‘auto-dim-other-buffers-never-dim-buffer-functions’ to see
-if any of them return non-nil in which case the BUFFER won’t
-dimmed.  In addition to that, outside of adow-mode (see
-‘adob--adow-mode’), no hidden buffers will be dimmed."
-  (or (and (not adob--adow-mode) (eq ?\s (aref (buffer-name buffer) 0)))
-      (run-hook-with-args-until-success
-       'auto-dim-other-buffers-never-dim-buffer-functions buffer)))
+if any of them return non-nil in which case the BUFFER won’t be
+dimmed."
+  (run-hook-with-args-until-success
+   'auto-dim-other-buffers-never-dim-buffer-functions buffer))
 
 
 (defvar-local adob--face-mode-remapping nil
@@ -139,14 +129,12 @@ dimmed.  In addition to that, outside of adow-mode (see
 (defun adob--remap-add-relative ()
   "Adds all necessary relative face mappings.
 Updates ‘adob--face-mode-remapping’ variable accordingly."
-  (let ((make-face (if adob--adow-mode
-                       (lambda (face) `(:filtered (:window adob--dim t) ,face))
-                     #'identity)))
-    (setq adob--face-mode-remapping
-          (mapcar (lambda (spec)
-                    (face-remap-add-relative (car spec)
-                                             (funcall make-face (cdr spec))))
-                  auto-dim-other-buffers-affected-faces))))
+  (setq adob--face-mode-remapping
+        (mapcar (lambda (spec)
+                  (face-remap-add-relative
+                   (car spec)
+                   `(:filtered (:window adob--dim t) ,(cdr spec))))
+                auto-dim-other-buffers-affected-faces)))
 
 (defun adob--remap-remove-relative ()
   "Remove all relative mappings that we’ve added.
@@ -213,29 +201,26 @@ something we don’t want."
     (adob--remap-add-relative)
     nil))
 
-(defun adob--unmap-face (buffer object)
+(defun adob--unmap-face (buffer)
   "Make sure face remapping is inactive in BUFFER.
 
 Does not preserve current buffer.
 
-If face remapping had to be changed, force update of OBJECT which
-can be a window or a buffer."
+If face remapping had to be changed, forces all windows displaying the
+buffer to be updated on next redisplay."
   (when (buffer-local-value 'adob--face-mode-remapping buffer)
     (set-buffer buffer)
     (adob--remap-remove-relative)
-    (force-window-update object)))
+    (force-window-update buffer)))
 
 (defun adob--dim-buffer (buffer &optional except-in)
   "Dim BUFFER if not already dimmed except in EXCEPT-IN window.
 
 Does not preserve current buffer.
 
-EXCEPT-IN only works if the code is running in adow mode (see
-‘adob--adow-mode’) and it works by deactivating the dimmed face
-in specified window."
+EXCEPT-IN works by deactivating the dimmed face in specified window."
   (when (adob--remap-faces buffer buffer)
-    (dolist (wnd (and adob--adow-mode
-                      (get-buffer-window-list buffer 'n 'visible)))
+    (dolist (wnd (get-buffer-window-list buffer 'n 'visible))
       (set-window-parameter wnd 'adob--dim (not (eq wnd except-in))))))
 
 (defun adob--update ()
@@ -246,11 +231,8 @@ Dim previously selected window if selection has changed."
     (let* ((wnd (selected-window))
            (buf (window-buffer wnd)))
 
-      (cond
-       ((eq wnd adob--last-window))
-       (adob--adow-mode
-        ;; adow-mode is active and window has changed.  Update the adob--dim
-        ;; parameter accordingly.
+      (unless (eq wnd adob--last-window)
+        ;; Window has changed.  Update the adob--dim parameter accordingly.
         (when (and (window-live-p adob--last-window)
                    (not (window-minibuffer-p adob--last-window)))
           (set-window-parameter adob--last-window 'adob--dim t)
@@ -259,21 +241,6 @@ Dim previously selected window if selection has changed."
         (unless (window-minibuffer-p adob--last-window)
           (set-window-parameter adob--last-window 'adob--dim nil)
           (force-window-update adob--last-window)))
-       (t
-        ;; Window has changed but adow-mode is not active.  Make sure buffer
-        ;; displayed in the old window is dimmed.  This is necessary because
-        ;; a command (e.g. ‘quit-window’) could change to a different window
-        ;; while at the same time changing buffer in the old window.  In this
-        ;; scenario, we’re never dimming the buffer in the old window.
-        (and (window-live-p adob--last-window)
-             (not (window-minibuffer-p adob--last-window))
-             (let ((old-buf (window-buffer adob--last-window)))
-               (unless (or (eq old-buf buf)
-                           (eq old-buf adob--last-buffer))
-                 (save-current-buffer
-                   (adob--dim-buffer old-buf))
-                 (force-window-update adob--last-window))))
-        (setq adob--last-window wnd)))
 
       ;; If buffer has changed, update its status.
       (unless (eq buf adob--last-buffer)
@@ -281,9 +248,7 @@ Dim previously selected window if selection has changed."
           (when (buffer-live-p adob--last-buffer)
             (adob--dim-buffer adob--last-buffer wnd))
           (setq adob--last-buffer buf)
-          (if adob--adow-mode
-              (adob--remap-faces buf buf)
-            (adob--unmap-face buf buf)))))))
+          (adob--remap-faces buf buf))))))
 
 (defun adob--rescan-windows ()
   "Rescan all windows in selected frame and dim all non-selected windows."
@@ -292,20 +257,14 @@ Dim previously selected window if selection has changed."
     (save-current-buffer
       (dolist (wnd (window-list nil 'n))
         (let ((buf (window-buffer wnd)))
-          (cond (adob--adow-mode
-                 ;; Update window’s ‘adob--dim’ parameter.  If it changes set
-                 ;; we’ll also later tell Emacs to redisplay the window.
-                 (let ((new (not (eq wnd selected-window))))
-                   (unless (eq new (window-parameter wnd 'adob--dim))
-                     (set-window-parameter wnd 'adob--dim new)
-                     (force-window-update wnd)))
-                 ;; In adow-mode, make sure that the buffer has remapped faces.
-                 (adob--remap-faces buf wnd))
-                ;; Outside of adow-mode, add or remove face remapping depending
-                ;; on whether current buffer selected buffer or not.
-                ((eq buf selected-buffer)
-                 (adob--unmap-face buf wnd))
-                ((adob--remap-faces buf wnd))))))))
+          ;; Update window’s ‘adob--dim’ parameter.  If it changes set
+          ;; we’ll also later tell Emacs to redisplay the window.
+          (let ((new (not (eq wnd selected-window))))
+            (unless (eq new (window-parameter wnd 'adob--dim))
+              (set-window-parameter wnd 'adob--dim new)
+              (force-window-update wnd)))
+          ;; Make sure that the buffer has remapped faces.
+          (adob--remap-faces buf wnd))))))
 
 (defun adob--buffer-list-update-hook ()
   "React to buffer list changes.
@@ -323,13 +282,10 @@ Otherwise, if a new buffer is displayed somewhere, dim it."
   "Dim all buffers if `auto-dim-other-buffers-dim-on-focus-out'."
   (when (and auto-dim-other-buffers-dim-on-focus-out
              (buffer-live-p adob--last-buffer))
-    (if adob--adow-mode
-        (when (and (window-live-p adob--last-window)
-                   (not (window-minibuffer-p adob--last-window)))
-          (set-window-parameter adob--last-window 'adob--dim t)
-          (force-window-update adob--last-window))
-      (save-current-buffer
-        (adob--dim-buffer adob--last-buffer)))
+    (when (and (window-live-p adob--last-window)
+               (not (window-minibuffer-p adob--last-window)))
+      (set-window-parameter adob--last-window 'adob--dim t)
+      (force-window-update adob--last-window))
     (setq adob--last-buffer nil
           adob--last-window nil)))
 
@@ -383,15 +339,11 @@ and frame’s doesn’t have focus."
 
 (defun adob--initialize ()
   "Dim all except for the selected buffer."
-  ;; In adow mode, dim current buffer as well except for in selected window.  If
-  ;; not running in adow mode, don’t dim hidden buffers either (most notably we
-  ;; care about Minibuffer and Echo Area buffers).
+  ;; Dim current buffer as well except in selected window.
   (setq adob--last-window (selected-window)
         adob--last-buffer (window-buffer adob--last-window))
   (dolist (buffer (buffer-list))
-    (when (or adob--adow-mode
-              (not (eq buffer adob--last-buffer)))
-      (adob--dim-buffer buffer adob--last-window))))
+    (adob--dim-buffer buffer adob--last-window)))
 
 ;;;###autoload
 (define-minor-mode auto-dim-other-buffers-mode
@@ -414,16 +366,13 @@ behaviour is where the mode gets its name from."
   (let ((callback (if auto-dim-other-buffers-mode #'add-hook #'remove-hook)))
     (funcall callback 'window-configuration-change-hook #'adob--rescan-windows)
     (funcall callback 'buffer-list-update-hook #'adob--buffer-list-update-hook)
-    ;; Prefer ‘after-focus-change-function’ (which was added in Emacs 27)
-    ;; to ‘focus-out-hook’ and ‘focus-in-hook’.
-    (if (boundp 'after-focus-change-function)
-        (if auto-dim-other-buffers-mode
-            (add-function :after after-focus-change-function
-                          #'adob--focus-change-hook)
-          (remove-function after-focus-change-function
-                           #'adob--focus-change-hook))
-      (funcall callback 'focus-out-hook #'adob--focus-out-hook)
-      (funcall callback 'focus-in-hook #'adob--update)))
+    ;; ‘after-focus-change-function’ has been added in Emacs 27 so we’re safe
+    ;; using it.
+    (if auto-dim-other-buffers-mode
+        (add-function :after after-focus-change-function
+                      #'adob--focus-change-hook)
+      (remove-function after-focus-change-function
+                       #'adob--focus-change-hook)))
 
   ;; Kill focus change timer if present.  If we’re enabling the mode we want to
   ;; start from fresh state.  If we’re disabling the mode, we don’t want the
@@ -451,7 +400,7 @@ behaviour is where the mode gets its name from."
         ;; in the buffer.
         (when (local-variable-p 'adob--face-mode-remapping buffer)
           (set-buffer buffer)
-          (adob--unmap-face buffer buffer)
+          (adob--unmap-face buffer)
           (kill-local-variable 'adob--face-mode-remapping))))))
 
 
