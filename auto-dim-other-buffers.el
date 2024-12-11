@@ -1,8 +1,8 @@
 ;;; auto-dim-other-buffers.el --- Makes windows without focus less prominent -*- lexical-binding: t -*-
 ;; Author: Michal Nazarewicz <mina86@mina86.com>
-;; Maintainer: Michal Nazarewicz <mina86@mina86.com>
 ;; URL: https://github.com/mina86/auto-dim-other-buffers.el
 ;; Version: 2.1.1
+;; Keywords: faces
 
 ;; This file is not part of GNU Emacs.
 
@@ -358,8 +358,8 @@ stores the last state we’ve seen so that we can skip doing any
 work if it hasn’t changed.")
 
 (defun adob--focus-change ()
-    ;; Reset the timer variable so `adob--focus-change-hook’ will schedule us
-    ;; again.
+  ;; Reset the timer variable so `adob--focus-change-hook’ will schedule us
+  ;; Again.
   (setq adob--focus-change-timer nil)
   ;; ‘after-focus-change-function’ has been added at the same time as
   ;; ‘frame-focus-state’ function so if we’re here we know that function is
