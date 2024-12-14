@@ -22,38 +22,74 @@
 
 ;;; Commentary:
 
-;; The ‘auto-dim-other-buffers-mode’ is a global minor mode which makes windows
+;; The `auto-dim-other-buffers-mode' is a global minor mode which makes windows
 ;; without focus less prominent.  With many windows in a frame, this mode helps
 ;; recognise which is the selected window by providing a non-intrusive but still
 ;; noticeable visual indicator.
 
-;; The preferred way to install the mode is by grabbing ‘auto-dim-other-buffers’
-;; package form MELPA:
-;;
+
+;; # Installation
+
+;; The preferred way to install the mode is by grabbing
+;; `auto-dim-other-buffers' package form NonGNU ELPA:
+
 ;;     M-x package-install RET auto-dim-other-buffers RET
 
-;; Once installed, the mode can be turned on (globally) with:
-;;
+;; Once installed, enable the mode with:
+
 ;;     M-x auto-dim-other-buffers-mode RET
 
 ;; To make the mode enabled every time Emacs starts, add the following to Emacs
 ;; initialisation file (see `user-init-file'):
-;;
+
 ;;     (add-hook 'after-init-hook (lambda ()
 ;;       (when (fboundp 'auto-dim-other-buffers-mode)
 ;;         (auto-dim-other-buffers-mode t))))
 
-;; To configure how dimmed buffers look like, change
-;; `auto-dim-other-buffers-face' and `auto-dim-other-buffers-hide-face' faces.
-;; Those faces as well as other settings can be found in
-;; ‘auto-dim-other-buffers’ group which can be accessed with:
-;;
+;; To configure how dimmed buffers look, customise
+;; `auto-dim-other-buffers-face'.  This can be accomplished by:
+
+;;     M-x customize-face RET auto-dim-other-buffers-face RET
+
+;; More options can be found in `auto-dim-other-buffers' customisation
+;; group which can be accessed with:
+
 ;;     M-x customize-group RET auto-dim-other-buffers RET
 
 ;; Note that despite it, the mode operates on *windows* rather than buffers.  In
 ;; other words, selected window is highlighted and all other windows are dimmed
 ;; even if they display the same buffer.  The package is named
 ;; `auto-dim-other-buffer' for historical reasons.
+
+
+;; ## Troubleshooting
+
+;; ### Text which should be hidden in org-mode is not
+
+;; To hide text, `org-mode' uses `org-hide' face whose foreground is set to
+;; the background colour of the `default' face.  When
+;; `auto-dim-other-buffers-mode' changes background of a dimmed window it
+;; also needs to be applied to the `org-hide' face.  The good news is that
+;; this is supported out of the box.  The caveat is that it requires that
+;; `auto-dim-other-buffers-face' and `auto-dim-other-buffers-hide-face' are
+;; changed in sync.
+
+;; If text which should be hidden in org-mode is visible faintly, the most
+;; likely reason is that the latter face has not been updated.  The
+;; solution is to customise it via
+
+;;     M-x customize-face RET auto-dim-other-buffers-hide-face RET
+
+;; and set its foreground and background to match background of the
+;; `auto-dim-other-buffers-face'.
+
+
+;; ## Afterword
+
+;; Note that despite it, the mode operates on *windows* rather than
+;; buffers.  In other words, selected window is highlighted and all other
+;; windows are dimmed even if they display the same buffer.  The package
+;; is named `auto-dim-other-buffer' for historical reasons.
 
 ;;; Code:
 
@@ -135,7 +171,9 @@ new value."
                           auto-dim-other-buffers-affected-faces))))
 
 (defun adob--remap-add-relative-process-entry (entry)
-  "Add a single face mappings in current buffer."
+  "Add a single face mapping specified in ENTRY.
+ENTRY is either '(DIM-FACE . HIGHLIGHT-FACE) cons or (for backwards
+compatibility) 'DIM-FACE."
   (let ((face (car entry)) (spec (cdr entry)) args)
     (let ((add (lambda (value face)
                  (when face
@@ -202,10 +240,9 @@ Return non-nil if remappings have been added to BUFFER."
       wants)))
 
 (defun adob--kill-all-local-variables-advice (kill &rest args)
-  "Restores face remapping after killing all local variables.
-This is intended as an advice around ‘kill-all-local-variables’
-function which removes all buffer face remapping which is
-something we don’t want."
+  "Call KILL with ARGS and restore face remapping.
+Intended as an advice around ‘kill-all-local-variables’ function which
+kills all local variables and removes all face remapping."
   (when (prog1 adob--face-mode-remapping (apply kill args))
     (adob--remap-add-relative)
     nil))
@@ -275,17 +312,6 @@ Otherwise, if a new buffer is displayed somewhere, dim it."
       ;; dim it.
       (adob--dim-buffer current))))
 
-(defun adob--focus-out-hook ()
-  "Dim all buffers if `auto-dim-other-buffers-dim-on-focus-out'."
-  (when (and auto-dim-other-buffers-dim-on-focus-out
-             (buffer-live-p adob--last-buffer))
-    (when (and (window-live-p adob--last-window)
-               (not (window-minibuffer-p adob--last-window)))
-      (set-window-parameter adob--last-window 'adob--dim t)
-      (force-window-update adob--last-window))
-    (setq adob--last-buffer nil
-          adob--last-window nil)))
-
 (defvar adob--focus-change-debounce-delay 0.015
   "Delay in seconds to use when debouncing focus change events.
 Window manager may send spurious focus change events.  To filter
@@ -311,6 +337,9 @@ stores the last state we’ve seen so that we can skip doing any
 work if it hasn’t changed.")
 
 (defun adob--focus-change ()
+  "Based on focus status of selected frame dim or undim selected buffer.
+Do nothing if `auto-dim-other-buffers-dim-on-focus-out' is nil
+and frame’s doesn’t have focus."
   ;; Reset the timer variable so `adob--focus-change-hook’ will schedule us
   ;; Again.
   (setq adob--focus-change-timer nil)
@@ -320,19 +349,23 @@ work if it hasn’t changed.")
   (let ((state (with-no-warnings (frame-focus-state))))
     (unless (eq adob--focus-change-last-state state)
       (setq adob--focus-change-last-state state)
-      (if state (adob--update)
-        (adob--focus-out-hook)))))
+      (cond (state (adob--update))
+            ((and auto-dim-other-buffers-dim-on-focus-out
+                  (buffer-live-p adob--last-buffer))
+             (when (and (window-live-p adob--last-window)
+                        (not (window-minibuffer-p adob--last-window)))
+               (set-window-parameter adob--last-window 'adob--dim t)
+               (force-window-update adob--last-window))
+             (setq adob--last-buffer nil
+                   adob--last-window nil))))))
 
 (defun adob--focus-change-hook ()
-  "Based on focus status of selected frame dim or undim selected buffer.
-Do nothing if `auto-dim-other-buffers-dim-on-focus-out' is nil
-and frame’s doesn’t have focus."
-  (if (<= adob--focus-change-debounce-delay 0)
-      (adob--focus-change)
-    (unless adob--focus-change-timer
-      (setq adob--focus-change-timer
-            (run-with-timer adob--focus-change-debounce-delay nil
-                            #'adob--focus-change)))))
+  "Debounce focus-change event and call `adob--focus-change'."
+  (cond ((<= adob--focus-change-debounce-delay 0) (adob--focus-change))
+        ((not adob--focus-change-timer)
+         (setq adob--focus-change-timer
+               (run-with-timer adob--focus-change-debounce-delay nil
+                               #'adob--focus-change)))))
 
 (defun adob--initialize ()
   "Dim all except for the selected buffer."
@@ -444,7 +477,7 @@ highlighting works.
            (org-hide  . (nil . auto-dim-other-buffers-hide-face))))
 
 For backwards compatibility, a (FACE . DIM-FACE) format for the entries
-is also accepted. (Although, setting that is not supported through
+is also accepted.  (Although, setting that is not supported through
 Customize).
 
 Changing this variable outside of Customize does not update display

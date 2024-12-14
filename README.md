@@ -10,6 +10,9 @@ a non-intrusive but still noticeable visual indicator.
 
 [![Demo](screenshot.gif)](https://www.youtube.com/watch?v=2djOHSWhyD4)
 
+
+## Installation
+
 The preferred way to install the mode is by grabbing
 `auto-dim-other-buffers` package form NonGNU ELPA:
 
@@ -27,6 +30,9 @@ initialisation file (typically `~/.emacs`, `~/.emacs.d/init.el` or
       (when (fboundp 'auto-dim-other-buffers-mode)
         (auto-dim-other-buffers-mode t))))
 
+
+## Customisation
+
 To configure how dimmed buffers look, customise
 `auto-dim-other-buffers-face`.  This can be accomplished by:
 
@@ -36,6 +42,31 @@ More options can be found in `auto-dim-other-buffers` customisation
 group which can be accessed with:
 
     M-x customize-group RET auto-dim-other-buffers RET
+
+
+## Troubleshooting
+
+### Text which should be hidden in org-mode is not
+
+To hide text, `org-mode` uses `org-hide` face whose foreground is set to
+the background colour of the `default` face.  When
+`auto-dim-other-buffers-mode` changes background of a dimmed window it
+also needs to be applied to the `org-hide` face.  The good news is that
+this is supported out of the box.  The caveat is that it requires that
+`auto-dim-other-buffers-face` and `auto-dim-other-buffers-hide-face` are
+changed in sync.
+
+If text which should be hidden in org-mode is visible faintly, the most
+likely reason is that the latter face has not been updated.  The
+solution is to customise it via
+
+    M-x customize-face RET auto-dim-other-buffers-hide-face RET
+
+and set its foreground and background to match background of the
+`auto-dim-other-buffers-face`.
+
+
+## Afterword
 
 Note that despite it, the mode operates on *windows* rather than
 buffers.  In other words, selected window is highlighted and all other
