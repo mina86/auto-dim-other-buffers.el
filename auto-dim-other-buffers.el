@@ -151,23 +151,22 @@ variable is changed to update state of all affected buffers.
 Note that it is called automatically as necessary when setting
 than variable via Customise."
   (save-current-buffer
-    (mapc (lambda (buffer)
-            ;; It’s tempting to read the value of the variable and not bother
-            ;; with the buffer if the value is nil since in that case the
-            ;; buffer is presumably never-dim and thus we won’t remap any
-            ;; faces in it.  There is one corner case when this is not true
-            ;; however.  If at one point user set list of faces to affect to
-            ;; nil the list of remapping will be nil as well and when user
-            ;; changes the variable we’ll need to add remappings.
-            (when (local-variable-p 'adob--face-mode-remapping buffer)
-              (set-buffer buffer)
-              (let ((had-none (not adob--face-mode-remapping)))
-                (adob--remap-remove-relative)
-                (unless (adob--never-dim-p buffer)
-                  (adob--remap-add-relative))
-                (unless (eq had-none (not adob--face-mode-remapping))
-                  (force-window-update buffer)))))
-          (buffer-list))))
+    (dolist (buffer (buffer-list))
+      ;; It’s tempting to read the value of the variable and not bother with the
+      ;; buffer if the value is nil since in that case the buffer is presumably
+      ;; never-dim and thus we won’t remap any faces in it.  There is one corner
+      ;; case when this is not true however.  If at one point user set list of
+      ;; faces to affect to nil the list of remapping will be nil as well and
+      ;; when user changes the variable we’ll need to add remappings.
+      (when (local-variable-p 'adob--face-mode-remapping buffer)
+        (set-buffer buffer)
+        (let ((had-none (not adob--face-mode-remapping)))
+          (adob--remap-remove-relative)
+          (unless (adob--never-dim-p buffer)
+            (adob--remap-add-relative))
+          (unless (eq had-none (not adob--face-mode-remapping))
+            (force-window-update buffer)))))))
+
 
 (defun adob--remap-faces (buffer object)
   "Make sure face remappings are active in BUFFER unless its never-dim.
