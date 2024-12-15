@@ -131,11 +131,21 @@ dimmed."
 Updates ‘adob--face-mode-remapping’ variable accordingly and returns its
 new value."
   (setq adob--face-mode-remapping
-        (mapcar (lambda (spec)
-                  (face-remap-add-relative
-                   (car spec)
-                   `(:filtered (:window adob--dim t) ,(cdr spec))))
-                auto-dim-other-buffers-affected-faces)))
+        (delq nil (mapcar #'adob--remap-add-relative-process-entry
+                          auto-dim-other-buffers-affected-faces))))
+
+(defun adob--remap-add-relative-process-entry (entry)
+  "Add a single face mappings in current buffer."
+  (let ((face (car entry)) (spec (cdr entry)) args)
+    (let ((add (lambda (value face)
+                 (when face
+                   (push `(:filtered (:window adob--dim ,value) ,face) args)))))
+      ;; spec is either 'dim-face or '(dim-face . high-face) and either of the
+      ;; faces can be nil.
+      (funcall add t   (if (consp spec) (car spec) spec))
+      (funcall add nil (cdr-safe spec)))
+    (when args
+      (apply #'face-remap-add-relative face args))))
 
 (defun adob--remap-remove-relative ()
   "Remove all relative mappings that we’ve added.
@@ -406,28 +416,54 @@ update display state of all affected buffers."
          value))
 
 (defcustom auto-dim-other-buffers-affected-faces
-  '((default   . auto-dim-other-buffers-face)
-    (org-block . auto-dim-other-buffers-face)
-    (org-hide  . auto-dim-other-buffers-hide-face))
-  "A list of faces affected when dimming a window.
+  '((default   . (auto-dim-other-buffers-face      . nil))
+    (org-block . (auto-dim-other-buffers-face      . nil))
+    (org-hide  . (auto-dim-other-buffers-hide-face . nil)))
+  "A list of faces affected when dimming/highlighting a window.
 
-The list consists of (FACE . REMAP-FACE) pairs where FACE is an
-existing face which should be affected when dimming a window and
-REMAP-FACE is remapping which should be added to it.
+The list comprising of (FACE . (DIM-FACE . HIGH-FACE)) cons pairs.
+FACE is an existing face for which a remapping will be added (see
+`face-remap-add-relative').  DIM-FACE and HIGH-FACE are remapping faces
+which are active in dimmed and highlighted windows respectively.  Either
+face can be nil; if they are both nil, the entry has no effect.
 
-Typically, REMAP-FACE is either ‘auto-dim-other-buffers-face’ or
+Typically, DIM-FACE is either ‘auto-dim-other-buffers-face’ or
 ‘auto-dim-other-buffers-hide-face’.  The former is used when the
-background of the face needs to be dimmed while the latter when
-in addition the foreground needs to be set to match the
-background.  For example, ‘default’ face is altered by overriding
-it with the former which causes background of the window to be
-changed.  On the other hand, ‘org-hide’ (which hides text by
-rendering it in the same colour as the background) is changed by
-the latter so that the hidden text stays hidden.
+background of the face needs to be dimmed while the latter when in
+addition the foreground needs to be set to match the background.
 
-Changing this variable outside of customize does not update
-display state of affected buffers."
-  :type '(list (cons face face))
+HIGH-FACE allows inverting the effects of `auto-dim-other-buffers-mode'
+such that rather than dimming non-selected windows, it’s possible to
+highlight selected window, for example as shown in example below.  Alas,
+it’s then up to the user to properly set up faces such that all of the
+highlighting works.
+
+    (setq auto-dim-other-buffers-affected-faces
+         '((default   . (nil . auto-dim-other-buffers-face))
+           (org-block . (nil . auto-dim-other-buffers-face))
+           (org-hide  . (nil . auto-dim-other-buffers-hide-face))))
+
+For backwards compatibility, a (FACE . DIM-FACE) format for the entries
+is also accepted. (Although, setting that is not supported through
+Customize).
+
+Changing this variable outside of Customize does not update display
+state of affected buffers and requires toggling the mode off and on."
+  ;; TODO: We’re using (symbol ...) rather than (face ...)  in the type
+  ;; definition because the former breaks if the face is not defined.  This
+  ;; happens in our case since org isn’t loaded by default and we’re including
+  ;; org faces in the default value.
+  ;;
+  ;; Another aspect of symbol is that it allows nil value.  It’s convenient for
+  ;; us in the Remapping part but inconvenient in the Target part.
+  ;;
+  ;; (face ...) would be better (and we’d use choice between face and (const
+  ;; nil) in the Remapping) but for now sticking with the former.
+  :type '(repeat (cons :tag "Remapping specification"
+                       (symbol :tag "Target face")
+                       (cons :tag "Remapping faces"
+                             (symbol :tag "Dimmed     ")
+                             (symbol :tag "Highlighted"))))
   :group 'auto-dim-other-buffers
   :set (lambda (symbol value)
          (set-default symbol value)
