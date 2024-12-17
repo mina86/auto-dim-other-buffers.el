@@ -124,11 +124,11 @@ dimmed."
 
 (defvar-local adob--face-mode-remapping nil
   "Current face remapping cookie for `auto-dim-other-buffers-mode'.")
-(put 'adob--face-mode-remapping 'permanent-local nil)
 
 (defun adob--remap-add-relative ()
-  "Adds all necessary relative face mappings.
-Updates ‘adob--face-mode-remapping’ variable accordingly."
+  "Map all necessary relative face in current buffer.
+Updates ‘adob--face-mode-remapping’ variable accordingly and returns its
+new value."
   (setq adob--face-mode-remapping
         (mapcar (lambda (spec)
                   (face-remap-add-relative
@@ -139,32 +139,31 @@ Updates ‘adob--face-mode-remapping’ variable accordingly."
 (defun adob--remap-remove-relative ()
   "Remove all relative mappings that we’ve added.
 List of existing mappings is taken from ‘adob--face-mode-remapping’
-variable which is set to nil afterwards."
+variable whose local value is killed afterwards."
   (mapc #'face-remap-remove-relative adob--face-mode-remapping)
-  (setq adob--face-mode-remapping nil))
+  (kill-local-variable 'adob--face-mode-remapping))
 
-(defun adob--remap-cycle-all ()
-  "Removes and re-adds face remappings in all buffers when they exist.
-If ‘auto-dim-other-buffers-mode’ is enabled, this function needs
-to be called after ‘auto-dim-other-buffers-affected-faces’
-variable is changed to update state of all affected buffers.
-Note that it is called automatically as necessary when setting
-than variable via Customise."
+(defun adob--remap-cycle-all (add)
+  "Remove and re-add face remappings in all buffers where they exist.
+If ADD is nil, do not re-add the mappings.
+
+This needs to be called after ‘auto-dim-other-buffers-affected-faces’ is
+changed to update state of all affected buffers (which is done when the
+variable is changed via Customize).  It is also used when disabling the
+adob mode."
   (save-current-buffer
     (dolist (buffer (buffer-list))
-      ;; It’s tempting to read the value of the variable and not bother with the
-      ;; buffer if the value is nil since in that case the buffer is presumably
-      ;; never-dim and thus we won’t remap any faces in it.  There is one corner
-      ;; case when this is not true however.  If at one point user set list of
-      ;; faces to affect to nil the list of remapping will be nil as well and
-      ;; when user changes the variable we’ll need to add remappings.
+      ;; Check if adob--face-mode-remapping has local value indicating we have
+      ;; influence over the buffer. The value may be nil (if there are no
+      ;; affected faces) which is why we’re not simply reading the value.
       (when (local-variable-p 'adob--face-mode-remapping buffer)
         (set-buffer buffer)
-        (let ((had-none (not adob--face-mode-remapping)))
-          (adob--remap-remove-relative)
-          (unless (adob--never-dim-p buffer)
-            (adob--remap-add-relative))
-          (unless (eq had-none (not adob--face-mode-remapping))
+        (let* ((had-some (prog1 adob--face-mode-remapping
+                           (adob--remap-remove-relative)))
+               (has-some (and add
+                              (not (adob--never-dim-p buffer))
+                              (adob--remap-add-relative))))
+          (when (or had-some has-some)
             (force-window-update buffer)))))))
 
 
@@ -199,18 +198,6 @@ something we don’t want."
   (when (prog1 adob--face-mode-remapping (apply kill args))
     (adob--remap-add-relative)
     nil))
-
-(defun adob--unmap-face (buffer)
-  "Make sure face remapping is inactive in BUFFER.
-
-Does not preserve current buffer.
-
-If face remapping had to be changed, forces all windows displaying the
-buffer to be updated on next redisplay."
-  (when (buffer-local-value 'adob--face-mode-remapping buffer)
-    (set-buffer buffer)
-    (adob--remap-remove-relative)
-    (force-window-update buffer)))
 
 (defun adob--dim-buffer (buffer &optional except-in)
   "Dim BUFFER if not already dimmed except in EXCEPT-IN window.
@@ -385,22 +372,11 @@ behaviour is where the mode gets its name from."
         (progn
           (advice-add #'kill-all-local-variables :around
                       #'adob--kill-all-local-variables-advice)
-          ;; Dim all except for selected buffer.
           (adob--initialize))
-
       (advice-remove #'kill-all-local-variables
                      #'adob--kill-all-local-variables-advice)
-      ;; Clean up by removing all face remaps.
-      (setq adob--last-buffer nil
-            adob--last-window nil)
-      (dolist (buffer (buffer-list))
-        ;; Kill the local variable even if it’s already set to nil.  This is why
-        ;; we’re checking whether it’s a local variable rather than it’s value
-        ;; in the buffer.
-        (when (local-variable-p 'adob--face-mode-remapping buffer)
-          (set-buffer buffer)
-          (adob--unmap-face buffer)
-          (kill-local-variable 'adob--face-mode-remapping))))))
+      (setq adob--last-buffer nil adob--last-window nil)
+      (adob--remap-cycle-all nil))))
 
 
 (defcustom auto-dim-other-buffers-never-dim-buffer-functions nil
@@ -455,7 +431,7 @@ display state of affected buffers."
   :set (lambda (symbol value)
          (set-default symbol value)
          (when auto-dim-other-buffers-mode
-           (adob--remap-cycle-all))))
+           (adob--remap-cycle-all t))))
 
 
 (provide 'auto-dim-other-buffers)
