@@ -62,6 +62,7 @@
 
 (defgroup auto-dim-other-buffers nil
   "Visually makes windows without focus less prominent."
+  :prefix "auto-dim-other-buffers-"
   :group 'convenience)
 
 (defface auto-dim-other-buffers-face
