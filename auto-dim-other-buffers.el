@@ -1,7 +1,7 @@
 ;;; auto-dim-other-buffers.el --- Makes windows without focus less prominent -*- lexical-binding: t -*-
 ;; Author: Michal Nazarewicz <mina86@mina86.com>
 ;; URL: https://github.com/mina86/auto-dim-other-buffers.el
-;; Version: 2.1.1
+;; Version: 2.2.0
 ;; Package-Requires: ((emacs "27.1"))
 ;; Keywords: faces
 
@@ -27,6 +27,9 @@
 ;; recognise which is the selected window by providing a non-intrusive but still
 ;; noticeable visual indicator.
 
+;; The mode provides two indications of the selected window.  Firstly,
+;; background of non-selected windows is dimmed.  Secondly, fringes of the
+;; selected windows are highlighted.
 
 ;; # Installation
 
@@ -56,13 +59,23 @@
 
 ;;     M-x customize-group RET auto-dim-other-buffers RET
 
-;; Note that despite it, the mode operates on *windows* rather than buffers.  In
-;; other words, selected window is highlighted and all other windows are dimmed
-;; even if they display the same buffer.  The package is named
-;; `auto-dim-other-buffer' for historical reasons.
+;; Highlighting of fringes can be done by removing `fringe' entry from
+;; `auto-dim-other-buffers-affected-faces' list.  Either via customising
+;; the variable or using the following snippet:
+
+;;     (setq auto-dim-other-buffers-affected-faces
+;;           (assq-delete-all 'fringe auto-dim-other-buffers-affected-faces))
 
 
 ;; ## Troubleshooting
+
+;; ### My screen is flickering
+
+;; By its nature, `auto-dim-other-buffers-mode' often forces full-window
+;; refreshes which may cause flickering on some systems and displays.  To
+;; mitigate it, try disabling `fringe' highlighting which—due to Emacs’
+;; display code limitation—require full-frame refresh.  See Customisation
+;; section above for instruction how to do it.
 
 ;; ### Text which should be hidden in org-mode is not
 
@@ -105,12 +118,11 @@
   '((((background light)) :background "#eff") (t :background "#122"))
   "Face with a (presumably) dimmed background for non-selected window.
 
-By default the face is applied to, among others, the ‘default’
-face and is intended to affect the background of the non-selected
-windows.  A related ‘auto-dim-other-buffers-hide-face’ face is
-intended for faces which need their foreground to be changed in
-sync.  Which faces are actually modified is configured by the
-‘auto-dim-other-buffers-affected-faces’ variable."
+By default it is applied to, among others, the ‘default’ face and is
+intended to affect background of non-selected windows.  A related
+‘auto-dim-other-buffers-hide-face’ face is intended for faces which need
+their foreground to be changed in sync.  Which faces are modified is
+configured by the ‘auto-dim-other-buffers-affected-faces’ variable."
   :group 'auto-dim-other-buffers)
 
 (defface auto-dim-other-buffers-hide-face
@@ -128,7 +140,7 @@ to modify foreground of faces which hide the text by rendering it
 in the same colour as the background.  Since the mode alters the
 background in a window such faces need to be updated as well.
 
-Which faces are actually modified is configured by the
+Which faces are modified is configured by the
 ‘auto-dim-other-buffers-affected-faces’ variable."
   :group 'auto-dim-other-buffers)
 
@@ -157,6 +169,52 @@ if any of them return non-nil in which case the BUFFER won’t be
 dimmed."
   (run-hook-with-args-until-success
    'auto-dim-other-buffers-never-dim-buffer-functions buffer))
+
+
+(defface adob--hack nil "A hack to make fringe refresh work.  Do not use.")
+(defvar adob--has-fringes nil
+  "Whether we are remapping `fringe' face; see `adob--has-fringes--refresh'.")
+
+(defun adob--has-fringes--refresh ()
+  "Refresh value of `adob--has-fringes'
+based on ‘auto-dim-other-buffers-affected-faces’ variable."
+  (setq
+   adob--has-fringes
+   (let ((spec (cdr-safe (assq 'fringe auto-dim-other-buffers-affected-faces))))
+     (and spec (or (symbolp spec) (car-safe spec) (cdr-safe spec)) t))))
+
+(defun adob--force-window-update (object)
+  "Force window to be updated on next redisplay.
+This does more than `force-window-update' by also forcing redisplay of
+fringes if necessary (see `adob--has-fringes').  This is done by forcing
+redisplay of frames containing affected windows."
+  (force-window-update object)
+  (when adob--has-fringes
+    (adob--force-fringes-refresh (if (windowp object)
+                                     (list object)
+                                   (get-buffer-window-list object nil t)))))
+
+(defun adob--positive-assqp (symbol params)
+  "Check that SYMBOL entry in PARAMS alist is a positive number."
+  (let ((value (cdr-safe (assq symbol params))))
+    (and (numberp value) (> value 0))))
+
+(defun adob--force-fringes-refresh (windows)
+  "Force refresh of fringes in WINDOWS.
+This is done by forcing full frame redraws."
+  (dolist (frame (delete-dups (mapcar #'window-frame windows)))
+    (let ((params (frame-parameters frame)))
+      (when (or (adob--positive-assqp 'right-fringe params)
+                (adob--positive-assqp 'left-fringe params))
+        ;; By changing the 'adob--hack face, we force the redisplay of the
+        ;; frame.  (Tracing the C code, I believe what we’re after is setting
+        ;; f->face_change and calling fset_redisplay).  We could instead call
+        ;; redraw-frame but my intuition tells me that that’s a slower
+        ;; operation, though honestly I dunno.
+        ; (redraw-frame frame)
+        (let ((value (face-attribute 'adob--hack :inverse-video frame nil)))
+          (internal-set-lisp-face-attribute
+           'adob--hack :inverse-video (not value) frame))))))
 
 
 (defvar-local adob--face-mode-remapping nil
@@ -200,21 +258,26 @@ This needs to be called after ‘auto-dim-other-buffers-affected-faces’ is
 changed to update state of all affected buffers (which is done when the
 variable is changed via Customize).  It is also used when disabling the
 adob mode."
-  (save-current-buffer
-    (dolist (buffer (buffer-list))
-      ;; Check if adob--face-mode-remapping has local value indicating we have
-      ;; influence over the buffer. The value may be nil (if there are no
-      ;; affected faces) which is why we’re not simply reading the value.
-      (when (local-variable-p 'adob--face-mode-remapping buffer)
-        (set-buffer buffer)
-        (let* ((had-some (prog1 adob--face-mode-remapping
-                           (adob--remap-remove-relative)))
-               (has-some (and add
-                              (not (adob--never-dim-p buffer))
-                              (adob--remap-add-relative))))
-          (when (or had-some has-some)
-            (force-window-update buffer)))))))
-
+  (let (buffers)
+    (save-current-buffer
+      (dolist (buffer (buffer-list))
+        ;; Check if adob--face-mode-remapping has local value indicating we have
+        ;; influence over the buffer. The value may be nil (if there are no
+        ;; affected faces) which is why we’re not simply reading the value.
+        (when (local-variable-p 'adob--face-mode-remapping buffer)
+          (set-buffer buffer)
+          (let* ((had-some (prog1 adob--face-mode-remapping
+                             (adob--remap-remove-relative)))
+                 (has-some (and add
+                                (not (adob--never-dim-p buffer))
+                                (adob--remap-add-relative))))
+            (when (or had-some has-some)
+              (push buffer buffers)
+              (force-window-update buffer))))))
+    (when (adob--has-fringes--refresh)
+      (adob--force-fringes-refresh
+       (apply #'nconc (mapcar (lambda (b) (get-buffer-window-list b 'n t))
+                              buffers))))))
 
 (defun adob--remap-faces (buffer object)
   "Make sure face remappings are active in BUFFER unless its never-dim.
@@ -236,7 +299,7 @@ Return non-nil if remappings have been added to BUFFER."
       (if wants
           (adob--remap-add-relative)
         (adob--remap-remove-relative))
-      (force-window-update object)
+      (adob--force-window-update object)
       wants)))
 
 (defun adob--kill-all-local-variables-advice (kill &rest args)
@@ -270,11 +333,11 @@ Dim previously selected window if selection has changed."
         (when (and (window-live-p adob--last-window)
                    (not (window-minibuffer-p adob--last-window)))
           (set-window-parameter adob--last-window 'adob--dim t)
-          (force-window-update adob--last-window))
+          (adob--force-window-update adob--last-window))
         (setq adob--last-window wnd)
         (unless (window-minibuffer-p adob--last-window)
           (set-window-parameter adob--last-window 'adob--dim nil)
-          (force-window-update adob--last-window)))
+          (adob--force-window-update adob--last-window)))
 
       ;; If buffer has changed, update its status.
       (unless (eq buf adob--last-buffer)
@@ -296,7 +359,7 @@ Dim previously selected window if selection has changed."
           (let ((new (not (eq wnd selected-window))))
             (unless (eq new (window-parameter wnd 'adob--dim))
               (set-window-parameter wnd 'adob--dim new)
-              (force-window-update wnd)))
+              (adob--force-window-update wnd)))
           ;; Make sure that the buffer has remapped faces.
           (adob--remap-faces buf wnd))))))
 
@@ -379,19 +442,24 @@ and frame’s doesn’t have focus."
 (define-minor-mode auto-dim-other-buffers-mode
   "Visually makes windows without focus less prominent.
 
-Windows without input focus are made to look less prominent by
-applying ‘auto-dim-other-buffers-face’ to them.  With many windows
-in a frame, the idea is that this mode helps recognise which is
-the selected window by providing a non-intrusive but still
-noticeable visual indicator.
+Windows without input focus are made to look less prominent by applying
+‘auto-dim-other-buffers-face’ to them.  With many windows in a frame,
+the idea is that this mode helps recognise which is the selected window
+by providing a non-intrusive but still noticeable visual indicator.
 
-Note that despite it’s name, since Emacs 27 this mode operates
-on *windows* rather than buffers.  In older versions of Emacs, if
-a buffer was displayed in multiple windows, none of them would be
-dimmed even though at most one could have focus.  This historic
-behaviour is where the mode gets its name from."
+Beware: This mode may cause flickering, especially if fringe changing is
+enabled (which is the default).  To mitigate the flickering, try
+removing fringe changing (see `auto-dim-other-buffers-affected-faces').
+
+Note: Despite it’s name, this mode operates on *windows* rather than
+buffers, i.e. even if a buffer is shown in multiple windows, only one of
+them is considered selected and all other will be dimmed.  Historically,
+prior to Emacs 27, all or none windows displaying a buffer would be
+dimmed; this historical behaviour is where the mode gets its name from."
   :global t
   :group 'auto-dim-other-buffers
+  (adob--has-fringes--refresh)
+
   ;; Add/remove all hooks
   (let ((callback (if auto-dim-other-buffers-mode #'add-hook #'remove-hook)))
     (funcall callback 'window-configuration-change-hook #'adob--rescan-windows)
@@ -444,14 +512,15 @@ update display state of all affected buffers."
   :set (lambda (symbol value)
          (set-default symbol value)
          (when auto-dim-other-buffers-mode
-           (save-current-buffer
+           (save-current-buffer*
              (adob--initialize)))
          value))
 
 (defcustom auto-dim-other-buffers-affected-faces
   '((default   . (auto-dim-other-buffers-face      . nil))
     (org-block . (auto-dim-other-buffers-face      . nil))
-    (org-hide  . (auto-dim-other-buffers-hide-face . nil)))
+    (org-hide  . (auto-dim-other-buffers-hide-face . nil))
+    (fringe    . (auto-dim-other-buffers-face . mode-line-active)))
   "A list of faces affected when dimming/highlighting a window.
 
 The list comprising of (FACE . (DIM-FACE . HIGH-FACE)) cons pairs.
@@ -472,9 +541,18 @@ it’s then up to the user to properly set up faces such that all of the
 highlighting works.
 
     (setq auto-dim-other-buffers-affected-faces
-         '((default   . (nil . auto-dim-other-buffers-face))
-           (org-block . (nil . auto-dim-other-buffers-face))
-           (org-hide  . (nil . auto-dim-other-buffers-hide-face))))
+          '((default   . (nil . auto-dim-other-buffers-face))
+            (org-block . (nil . auto-dim-other-buffers-face))
+            (org-hide  . (nil . auto-dim-other-buffers-hide-face))
+            (fringe    . (nil . mode-line-active))))
+
+Beware: inclusion of `fringe' face in the list forces a more expensive
+redraw procedure to be used.  This may cause additional flickering on
+some systems.  If you’re observing flickering, try removing the `fringe'
+entry, e.g. by using code such as:
+
+    (setq auto-dim-other-buffers-affected-faces
+          (assq-delete-all 'fringe auto-dim-other-buffers-affected-faces))
 
 For backwards compatibility, a (FACE . DIM-FACE) format for the entries
 is also accepted.  (Although, setting that is not supported through

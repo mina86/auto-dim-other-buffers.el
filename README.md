@@ -10,6 +10,10 @@ a non-intrusive but still noticeable visual indicator.
 
 [![Demo](screenshot.gif)](https://www.youtube.com/watch?v=2djOHSWhyD4)
 
+The mode provides two indications of the selected window.  Firstly,
+background of non-selected windows is dimmed.  Secondly, fringes of the
+selected windows are highlighted (not visualised in the image above).
+
 
 ## Installation
 
@@ -43,8 +47,23 @@ group which can be accessed with:
 
     M-x customize-group RET auto-dim-other-buffers RET
 
+Highlighting of fringes can be done by removing `fringe` entry from
+`auto-dim-other-buffers-affected-faces` list.  Either via customising
+the variable or using the following snippet:
+
+    (setq auto-dim-other-buffers-affected-faces
+          (assq-delete-all 'fringe auto-dim-other-buffers-affected-faces))
+
 
 ## Troubleshooting
+
+### My screen is flickering
+
+By its nature, `auto-dim-other-buffers-mode` often forces full-window
+refreshes which may cause flickering on some systems and displays.  To
+mitigate it, try disabling `fringe` highlighting which—due to Emacs’
+display code limitation—require full-frame refresh.  See Customisation
+section above for instruction how to do it.
 
 ### Text which should be hidden in org-mode is not
 
