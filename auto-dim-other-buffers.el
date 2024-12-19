@@ -1,7 +1,7 @@
 ;;; auto-dim-other-buffers.el --- Makes windows without focus less prominent -*- lexical-binding: t -*-
 ;; Author: Michal Nazarewicz <mina86@mina86.com>
 ;; URL: https://github.com/mina86/auto-dim-other-buffers.el
-;; Version: 2.2.0
+;; Version: 2.2.1
 ;; Package-Requires: ((emacs "27.1"))
 ;; Keywords: faces
 
@@ -523,9 +523,9 @@ update display state of all affected buffers."
 
 (defcustom auto-dim-other-buffers-affected-faces
   '((default   . (auto-dim-other-buffers      . nil))
+    (fringe    . (auto-dim-other-buffers      . nil))
     (org-block . (auto-dim-other-buffers      . nil))
-    (org-hide  . (auto-dim-other-buffers-hide . nil))
-    (fringe    . (auto-dim-other-buffers . mode-line-active)))
+    (org-hide  . (auto-dim-other-buffers-hide . nil)))
   "A list of faces affected when dimming/highlighting a window.
 
 The list comprising of (FACE . (DIM-FACE . HIGH-FACE)) cons pairs.
@@ -539,17 +539,15 @@ Typically, DIM-FACE is either ‘auto-dim-other-buffers’ or
 background of the face needs to be dimmed while the latter when in
 addition the foreground needs to be set to match the background.
 
-HIGH-FACE allows inverting the effects of `auto-dim-other-buffers-mode'
-such that rather than dimming non-selected windows, it’s possible to
-highlight selected window, for example as shown in example below.  Alas,
-it’s then up to the user to properly set up faces such that all of the
-highlighting works.
+HIGH-FACE allows highlighting the selected window, for example as shown
+in example below.  Alas, it’s then up to the user to properly set up
+faces such that all of the highlighting works.
 
     (setq auto-dim-other-buffers-affected-faces
           '((default   . (nil . auto-dim-other-buffers))
+            (fringe    . (nil . mode-line-active))
             (org-block . (nil . auto-dim-other-buffers))
-            (org-hide  . (nil . auto-dim-other-buffers-hide))
-            (fringe    . (nil . mode-line-active))))
+            (org-hide  . (nil . auto-dim-other-buffers-hide))))
 
 Beware: inclusion of `fringe' face in the list forces a more expensive
 redraw procedure to be used.  This may cause additional flickering on
