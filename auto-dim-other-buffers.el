@@ -27,10 +27,6 @@
 ;; recognise which is the selected window by providing a non-intrusive but still
 ;; noticeable visual indicator.
 
-;; The mode provides two indications of the selected window.  Firstly,
-;; background of non-selected windows is dimmed.  Secondly, fringes of the
-;; selected windows are highlighted.
-
 ;; # Installation
 
 ;; The preferred way to install the mode is by grabbing

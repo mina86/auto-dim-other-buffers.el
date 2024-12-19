@@ -8,12 +8,7 @@ windows without focus less prominent.  With many windows in a frame,
 this mode helps recognise which is the selected window by providing
 a non-intrusive but still noticeable visual indicator.
 
-[![Demo](screenshot.gif)](https://www.youtube.com/watch?v=2djOHSWhyD4)
-
-The mode provides two indications of the selected window.  Firstly,
-background of non-selected windows is dimmed.  Secondly, fringes of
-the selected windows are highlighted (not visualised in the image
-above).
+[![Demo](screenshot.gif)](https://www.youtube.com/watch?v=3_XTUKnQRtM)
 
 
 ## Installation
