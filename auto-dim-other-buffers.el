@@ -50,9 +50,9 @@
 ;;         (auto-dim-other-buffers-mode t))))
 
 ;; To configure how dimmed buffers look, customise
-;; `auto-dim-other-buffers-face'.  This can be accomplished by:
+;; `auto-dim-other-buffers'.  This can be accomplished by:
 
-;;     M-x customize-face RET auto-dim-other-buffers-face RET
+;;     M-x customize-face RET auto-dim-other-buffers RET
 
 ;; More options can be found in `auto-dim-other-buffers' customisation
 ;; group which can be accessed with:
@@ -73,36 +73,35 @@
 
 ;; By its nature, `auto-dim-other-buffers-mode' often forces full-window
 ;; refreshes which may cause flickering on some systems and displays.  To
-;; mitigate it, try disabling `fringe' highlighting which—due to Emacs’
-;; display code limitation—require full-frame refresh.  See Customisation
-;; section above for instruction how to do it.
+;; mitigate it, try disabling `fringe' highlighting which—due to Emacs’ display
+;; code limitation—require full-frame refresh.  See Customisation section above
+;; for instruction how to do it.
 
 ;; ### Text which should be hidden in org-mode is not
 
-;; To hide text, `org-mode' uses `org-hide' face whose foreground is set to
-;; the background colour of the `default' face.  When
-;; `auto-dim-other-buffers-mode' changes background of a dimmed window it
-;; also needs to be applied to the `org-hide' face.  The good news is that
-;; this is supported out of the box.  The caveat is that it requires that
-;; `auto-dim-other-buffers-face' and `auto-dim-other-buffers-hide-face' are
-;; changed in sync.
+;; To hide text, `org-mode' uses `org-hide' face whose foreground is set to the
+;; background colour of the `default' face.  When `auto-dim-other-buffers-mode'
+;; changes background of a dimmed window it also needs to be applied to the
+;; `org-hide' face.  The good news is that this is supported out of the box.
+;; The caveat is that it requires that `auto-dim-other-buffers' and
+;; `auto-dim-other-buffers-hide' are changed in sync.
 
 ;; If text which should be hidden in org-mode is visible faintly, the most
-;; likely reason is that the latter face has not been updated.  The
-;; solution is to customise it via
+;; likely reason is that the latter face has not been updated.  The solution is
+;; to customise it via
 
 ;;     M-x customize-face RET auto-dim-other-buffers-hide-face RET
 
 ;; and set its foreground and background to match background of the
-;; `auto-dim-other-buffers-face'.
+;; `auto-dim-other-buffers'.
 
 
 ;; ## Afterword
 
-;; Note that despite it, the mode operates on *windows* rather than
-;; buffers.  In other words, selected window is highlighted and all other
-;; windows are dimmed even if they display the same buffer.  The package
-;; is named `auto-dim-other-buffer' for historical reasons.
+;; Note that despite it, the mode operates on *windows* rather than buffers.  In
+;; other words, selected window is highlighted and all other windows are dimmed
+;; even if they display the same buffer.  The package is named
+;; `auto-dim-other-buffer' for historical reasons.
 
 ;;; Code:
 
@@ -114,24 +113,27 @@
   :prefix "auto-dim-other-buffers-"
   :group 'convenience)
 
-(defface auto-dim-other-buffers-face
+(defface auto-dim-other-buffers
   '((((background light)) :background "#eff") (t :background "#122"))
   "Face with a (presumably) dimmed background for non-selected window.
 
 By default it is applied to, among others, the ‘default’ face and is
 intended to affect background of non-selected windows.  A related
-‘auto-dim-other-buffers-hide-face’ face is intended for faces which need
+‘auto-dim-other-buffers-hide’ face is intended for faces which need
 their foreground to be changed in sync.  Which faces are modified is
-configured by the ‘auto-dim-other-buffers-affected-faces’ variable."
+configured by the ‘auto-dim-other-buffers-affecteds’ variable."
   :group 'auto-dim-other-buffers)
+(define-obsolete-face-alias 'auto-dim-other-buffers-face
+                            'auto-dim-other-buffers
+                            "2.2.1")
 
-(defface auto-dim-other-buffers-hide-face
+(defface auto-dim-other-buffers-hide
   '((((background light)) :foreground "#eff" :background "#eff")
     (t                    :foreground "#122" :background "#122"))
   "Face with a (presumably) dimmed background and matching foreground.
 
 The intention is that the face has the same foreground and
-background as the background of ‘auto-dim-other-buffers-face’ and
+background as the background of ‘auto-dim-other-buffers’ and
 that it’s used as remapping for faces which hide the text by
 rendering it in the same colour as background.
 
@@ -141,8 +143,11 @@ in the same colour as the background.  Since the mode alters the
 background in a window such faces need to be updated as well.
 
 Which faces are modified is configured by the
-‘auto-dim-other-buffers-affected-faces’ variable."
+‘auto-dim-other-buffers-affecteds’ variable."
   :group 'auto-dim-other-buffers)
+(define-obsolete-face-alias 'auto-dim-other-buffers-hide-face
+                            'auto-dim-other-buffers-hide
+                            "2.2.1")
 
 (defvar auto-dim-other-buffers-affected-faces) ; Forward declaration.
 
@@ -443,7 +448,7 @@ and frame’s doesn’t have focus."
   "Visually makes windows without focus less prominent.
 
 Windows without input focus are made to look less prominent by applying
-‘auto-dim-other-buffers-face’ to them.  With many windows in a frame,
+‘auto-dim-other-buffers’ to them.  With many windows in a frame,
 the idea is that this mode helps recognise which is the selected window
 by providing a non-intrusive but still noticeable visual indicator.
 
@@ -517,10 +522,10 @@ update display state of all affected buffers."
          value))
 
 (defcustom auto-dim-other-buffers-affected-faces
-  '((default   . (auto-dim-other-buffers-face      . nil))
-    (org-block . (auto-dim-other-buffers-face      . nil))
-    (org-hide  . (auto-dim-other-buffers-hide-face . nil))
-    (fringe    . (auto-dim-other-buffers-face . mode-line-active)))
+  '((default   . (auto-dim-other-buffers      . nil))
+    (org-block . (auto-dim-other-buffers      . nil))
+    (org-hide  . (auto-dim-other-buffers-hide . nil))
+    (fringe    . (auto-dim-other-buffers . mode-line-active)))
   "A list of faces affected when dimming/highlighting a window.
 
 The list comprising of (FACE . (DIM-FACE . HIGH-FACE)) cons pairs.
@@ -529,8 +534,8 @@ FACE is an existing face for which a remapping will be added (see
 which are active in dimmed and highlighted windows respectively.  Either
 face can be nil; if they are both nil, the entry has no effect.
 
-Typically, DIM-FACE is either ‘auto-dim-other-buffers-face’ or
-‘auto-dim-other-buffers-hide-face’.  The former is used when the
+Typically, DIM-FACE is either ‘auto-dim-other-buffers’ or
+‘auto-dim-other-buffers-hide’.  The former is used when the
 background of the face needs to be dimmed while the latter when in
 addition the foreground needs to be set to match the background.
 
@@ -541,9 +546,9 @@ it’s then up to the user to properly set up faces such that all of the
 highlighting works.
 
     (setq auto-dim-other-buffers-affected-faces
-          '((default   . (nil . auto-dim-other-buffers-face))
-            (org-block . (nil . auto-dim-other-buffers-face))
-            (org-hide  . (nil . auto-dim-other-buffers-hide-face))
+          '((default   . (nil . auto-dim-other-buffers))
+            (org-block . (nil . auto-dim-other-buffers))
+            (org-hide  . (nil . auto-dim-other-buffers-hide))
             (fringe    . (nil . mode-line-active))))
 
 Beware: inclusion of `fringe' face in the list forces a more expensive
