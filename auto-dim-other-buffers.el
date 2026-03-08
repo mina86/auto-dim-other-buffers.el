@@ -117,7 +117,7 @@ By default it is applied to, among others, the ‘default’ face and is
 intended to affect background of non-selected windows.  A related
 ‘auto-dim-other-buffers-hide’ face is intended for faces which need
 their foreground to be changed in sync.  Which faces are modified is
-configured by the ‘auto-dim-other-buffers-affecteds’ variable."
+configured by the ‘auto-dim-other-buffers-affected-faces’ variable."
   :group 'auto-dim-other-buffers)
 (define-obsolete-face-alias 'auto-dim-other-buffers-face
                             'auto-dim-other-buffers
@@ -139,7 +139,7 @@ in the same colour as the background.  Since the mode alters the
 background in a window such faces need to be updated as well.
 
 Which faces are modified is configured by the
-‘auto-dim-other-buffers-affecteds’ variable."
+‘auto-dim-other-buffers-affected-faces’ variable."
   :group 'auto-dim-other-buffers)
 (define-obsolete-face-alias 'auto-dim-other-buffers-hide-face
                             'auto-dim-other-buffers-hide
