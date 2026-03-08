@@ -512,7 +512,7 @@ update display state of all affected buffers."
   :set (lambda (symbol value)
          (set-default symbol value)
          (when auto-dim-other-buffers-mode
-           (save-current-buffer*
+           (save-current-buffer
              (adob--initialize)))
          value))
 
