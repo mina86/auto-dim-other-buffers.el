@@ -350,8 +350,7 @@ Dim previously selected window if selection has changed."
 
 (defun adob--rescan-windows ()
   "Rescan all windows in selected frame and dim all non-selected windows."
-  (let* ((selected-window (selected-window))
-         (selected-buffer (window-buffer selected-window)))
+  (let ((selected-window (selected-window)))
     (save-current-buffer
       (dolist (wnd (window-list nil 'n))
         (let ((buf (window-buffer wnd)))
