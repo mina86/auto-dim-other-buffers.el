@@ -231,8 +231,8 @@ new value."
 
 (defun adob--remap-add-relative-process-entry (entry)
   "Add a single face mapping specified in ENTRY.
-ENTRY is either '(DIM-FACE . HIGHLIGHT-FACE) cons or (for backwards
-compatibility) 'DIM-FACE."
+ENTRY is either \\='(DIM-FACE . HIGHLIGHT-FACE) cons or (for backwards
+compatibility) \\='DIM-FACE."
   (let ((face (car entry)) (spec (cdr entry)) args)
     (let ((add (lambda (value face)
                  (when face
@@ -524,7 +524,7 @@ update display state of all affected buffers."
     (org-hide  . (auto-dim-other-buffers-hide . nil)))
   "A list of faces affected when dimming/highlighting a window.
 
-The list comprising of (FACE . (DIM-FACE . HIGH-FACE)) cons pairs.
+The list comprising of \\='(FACE . (DIM-FACE . HIGH-FACE)) cons pairs.
 FACE is an existing face for which a remapping will be added (see
 `face-remap-add-relative').  DIM-FACE and HIGH-FACE are remapping faces
 which are active in dimmed and highlighted windows respectively.  Either
@@ -540,7 +540,7 @@ in example below.  Alas, it’s then up to the user to properly set up
 faces such that all of the highlighting works.
 
     (setq auto-dim-other-buffers-affected-faces
-          '((default   . (nil . auto-dim-other-buffers))
+       \\='((default   . (nil . auto-dim-other-buffers))
             (fringe    . (nil . mode-line-active))
             (org-block . (nil . auto-dim-other-buffers))
             (org-hide  . (nil . auto-dim-other-buffers-hide))))
@@ -551,7 +551,7 @@ some systems.  If you’re observing flickering, try removing the `fringe'
 entry, e.g. by using code such as:
 
     (setq auto-dim-other-buffers-affected-faces
-          (assq-delete-all 'fringe auto-dim-other-buffers-affected-faces))
+          (assq-delete-all \\='fringe auto-dim-other-buffers-affected-faces))
 
 For backwards compatibility, a (FACE . DIM-FACE) format for the entries
 is also accepted.  (Although, setting that is not supported through
